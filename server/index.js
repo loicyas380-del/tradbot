@@ -166,6 +166,16 @@ const ASSETS = {
   "ETC":   { name: "Ethereum Classic", base: 25, vol: 0.035, type: "crypto", binance: "ETCUSDT" },
 };
 
+function isStockMarketOpen() {
+  const now = new Date();
+  const etHour = parseInt(now.toLocaleString("en-US", { timeZone: "America/New_York", hour: "numeric", hour12: false }));
+  const etMin = parseInt(now.toLocaleString("en-US", { timeZone: "America/New_York", minute: "numeric" }));
+  const etDay = now.toLocaleString("en-US", { timeZone: "America/New_York", weekday: "short" });
+  if (etDay === "Sat" || etDay === "Sun") return false;
+  const mins = etHour * 60 + etMin;
+  return mins >= 570 && mins < 960;
+}
+
 const rangeDays = { "1w": 7, "1mo": 30, "3mo": 90, "6mo": 180, "1y": 365, "2y": 730 };
 
 // ═══════════════════════════════════════════════════════════════
@@ -364,6 +374,7 @@ async function liveTradeCheck() {
 
       // ── ENTRY CHECK ──
       if (!pos && getPositionCount() < MAX_POSITIONS) {
+        if (asset?.type === "stock" && !isStockMarketOpen()) continue;
         if (result.longScore >= 3 && liveState.balance > 5) {
           const spend = liveState.balance * 0.15;
           const qty = +(spend / currentPrice).toFixed(8);
