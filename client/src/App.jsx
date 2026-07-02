@@ -243,7 +243,7 @@ function App() {
           {/* POSITIONS COUNTER */}
           <div className="positions-counter">
             <div className="pos-count-bar">
-                {Array.from({ length: 6 }).map((_, i) => (
+                {Array.from({ length: 10 }).map((_, i) => (
                 <div key={i} className={`pos-slot ${i < positionCount ? "filled" : ""}`} />
               ))}
             </div>

@@ -181,7 +181,9 @@ const rangeDays = { "1w": 7, "1mo": 30, "3mo": 90, "6mo": 180, "1y": 365, "2y": 
 // ═══════════════════════════════════════════════════════════════
 // LIVE TRADING ENGINE
 // ═══════════════════════════════════════════════════════════════
-const MAX_POSITIONS = 6;
+const MAX_POSITIONS = 10;
+const MAX_CRYPTO = 7;
+const MAX_STOCKS = 3;
 const INITIAL_BALANCE = 1000;
 
 const liveState = {
@@ -204,6 +206,14 @@ function addNotification(type, title, message) {
 
 function getPositionCount() {
   return Object.keys(liveState.positions).length;
+}
+
+function getCryptoCount() {
+  return Object.keys(liveState.positions).filter(s => ASSETS[s]?.type === "crypto").length;
+}
+
+function getStockCount() {
+  return Object.keys(liveState.positions).filter(s => ASSETS[s]?.type === "stock").length;
 }
 
 // ─── INDICATORS ─────────────────────────────────────────────
@@ -373,32 +383,48 @@ async function liveTradeCheck() {
       }
 
       // ── ENTRY CHECK ──
-      if (!pos && getPositionCount() < MAX_POSITIONS) {
-        if (asset?.type === "stock" && !isStockMarketOpen()) continue;
+      const isCrypto = asset?.type === "crypto";
+      const isStock = asset?.type === "stock";
+      const atMax = getPositionCount() >= MAX_POSITIONS;
+      const cryptoLimit = isCrypto && getCryptoCount() >= MAX_CRYPTO;
+      const stockLimit = isStock && getStockCount() >= MAX_STOCKS;
+      const marketClosed = isStock && !isStockMarketOpen();
+
+      if (!pos && !atMax && !cryptoLimit && !stockLimit && !marketClosed) {
         if (result.longScore >= 3 && liveState.balance > 5) {
-          const spend = liveState.balance * 0.15;
+          const spend = liveState.balance * 0.10;
           const qty = +(spend / currentPrice).toFixed(8);
           const cost = qty * currentPrice;
+
+          const tpFinal = isStock ? +(price + atrVal * 4).toFixed(4) : result.tp;
+          const slFinal = isStock ? +(price - atrVal * 3).toFixed(4) : result.sl;
+
           liveState.positions[sym] = {
             side: "LONG", entryTime: new Date().toISOString(),
             entryPrice: currentPrice, qty, cost,
-            tp: result.tp, sl: result.sl,
+            tp: tpFinal, sl: slFinal,
           };
           liveState.balance -= cost;
 
-          addNotification("info", `📈 LONG ${sym}`, `Acheté $${currentPrice.toFixed(2)} | Qty: ${qty} | TP: $${result.tp} | SL: $${result.sl} | Score: ${result.longScore}`);
+          const tag = isCrypto ? "₿" : "📊";
+          addNotification("info", `${tag} LONG ${sym}`, `Acheté $${currentPrice.toFixed(2)} | Qty: ${qty} | TP: $${tpFinal} | SL: $${slFinal} | Score: ${result.longScore}`);
         } else if (result.shortScore >= 3 && liveState.balance > 5) {
-          const spend = liveState.balance * 0.15;
+          const spend = liveState.balance * 0.10;
           const qty = +(spend / currentPrice).toFixed(8);
           const cost = qty * currentPrice;
+
+          const shortTpFinal = isStock ? +(price - atrVal * 4).toFixed(4) : result.shortTp;
+          const shortSlFinal = isStock ? +(price + atrVal * 3).toFixed(4) : result.shortSl;
+
           liveState.positions[sym] = {
             side: "SHORT", entryTime: new Date().toISOString(),
             entryPrice: currentPrice, qty, cost,
-            tp: result.shortTp, sl: result.shortSl,
+            tp: shortTpFinal, sl: shortSlFinal,
           };
           liveState.balance -= cost;
 
-          addNotification("info", `📉 SHORT ${sym}`, `Vendu $${currentPrice.toFixed(2)} | Qty: ${qty} | TP: $${result.shortTp} | SL: $${result.shortSl} | Score: ${result.shortScore}`);
+          const tag = isCrypto ? "₿" : "📊";
+          addNotification("info", `${tag} SHORT ${sym}`, `Vendu $${currentPrice.toFixed(2)} | Qty: ${qty} | TP: $${shortTpFinal} | SL: $${shortSlFinal} | Score: ${result.shortScore}`);
         }
       }
     } catch (err) {
