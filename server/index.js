@@ -330,6 +330,7 @@ async function liveTradeCheck() {
       const currentPrice = result ? result.price : rawData[rawData.length - 1].close;
       liveState.currentPrices[sym] = currentPrice;
       if (!result) continue;
+      if (asset?.type === "crypto") console.log(`[SCORE] ${sym}: long=${result.longScore} short=${result.shortScore} (${[...result.longReasons, ...result.shortReasons].join(", ") || "no signals"})`);
 
       const pos = liveState.positions[sym];
 
@@ -428,9 +429,10 @@ async function liveTradeCheck() {
         }
       }
     } catch (err) {
-      // skip this asset
+      console.log(`[SKIP] ${sym}: ${err.message}`);
     }
   }
+  console.log(`[CYCLE] Positions: ${getPositionCount()}/${MAX_POSITIONS} | Crypto: ${getCryptoCount()}/${MAX_CRYPTO} | Stock: ${getStockCount()}/${MAX_STOCKS} | Balance: €${liveState.balance.toFixed(2)}`);
 }
 
 // Start live trading engine — check every 10 seconds
