@@ -171,7 +171,7 @@ const rangeDays = { "1w": 7, "1mo": 30, "3mo": 90, "6mo": 180, "1y": 365, "2y": 
 // ═══════════════════════════════════════════════════════════════
 // LIVE TRADING ENGINE
 // ═══════════════════════════════════════════════════════════════
-const MAX_POSITIONS = 10;
+const MAX_POSITIONS = 6;
 const INITIAL_BALANCE = 1000;
 
 const liveState = {
@@ -280,10 +280,10 @@ function analyzeDay(ana, i) {
     shortScore += 4; shortReasons.push("Counter-trend overbought");
   }
 
-  const tp = +(price + atrVal * 3).toFixed(4);
-  const sl = +(price - atrVal * 2.5).toFixed(4);
-  const shortTp = +(price - atrVal * 3).toFixed(4);
-  const shortSl = +(price + atrVal * 2.5).toFixed(4);
+const tp = +(price + atrVal * 2).toFixed(4);
+  const sl = +(price - atrVal * 2).toFixed(4);
+  const shortTp = +(price - atrVal * 2).toFixed(4);
+  const shortSl = +(price + atrVal * 2).toFixed(4);
 
   return { longScore, shortScore, longReasons, shortReasons, atr: atrVal, tp, sl, shortTp, shortSl, price };
 }
@@ -365,7 +365,7 @@ async function liveTradeCheck() {
       // ── ENTRY CHECK ──
       if (!pos && getPositionCount() < MAX_POSITIONS) {
         if (result.longScore >= 3 && liveState.balance > 5) {
-          const spend = liveState.balance * 0.08;
+          const spend = liveState.balance * 0.15;
           const qty = +(spend / currentPrice).toFixed(8);
           const cost = qty * currentPrice;
           liveState.positions[sym] = {
@@ -377,7 +377,7 @@ async function liveTradeCheck() {
 
           addNotification("info", `📈 LONG ${sym}`, `Acheté $${currentPrice.toFixed(2)} | Qty: ${qty} | TP: $${result.tp} | SL: $${result.sl} | Score: ${result.longScore}`);
         } else if (result.shortScore >= 3 && liveState.balance > 5) {
-          const spend = liveState.balance * 0.08;
+          const spend = liveState.balance * 0.15;
           const qty = +(spend / currentPrice).toFixed(8);
           const cost = qty * currentPrice;
           liveState.positions[sym] = {
