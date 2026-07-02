@@ -1,0 +1,14 @@
+{
+  "name": "tradbot",
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "install-all": "cd server && npm install && cd ../client && npm install",
+    "build": "cd client && npm run build",
+    "start": "node server/index.js",
+    "dev": "node server/index.js"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
