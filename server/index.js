@@ -343,11 +343,11 @@ async function liveTradeCheck() {
         if (pos.side === "LONG") {
           if (currentPrice <= pos.sl) { shouldExit = true; exitPrice = pos.sl; exitReason = "SL"; }
           else if (currentPrice >= pos.tp) { shouldExit = true; exitPrice = pos.tp; exitReason = "TP"; }
-          else if (result.shortScore >= 3) { shouldExit = true; exitReason = "REVERSE"; }
+          else if (result.shortScore >= 2) { shouldExit = true; exitReason = "REVERSE"; }
         } else {
           if (currentPrice >= pos.sl) { shouldExit = true; exitPrice = pos.sl; exitReason = "SL"; }
           else if (currentPrice <= pos.tp) { shouldExit = true; exitPrice = pos.tp; exitReason = "TP"; }
-          else if (result.longScore >= 3) { shouldExit = true; exitReason = "REVERSE"; }
+          else if (result.longScore >= 2) { shouldExit = true; exitReason = "REVERSE"; }
         }
 
         if (shouldExit) {
@@ -392,7 +392,7 @@ async function liveTradeCheck() {
       const marketClosed = isStock && !isStockMarketOpen();
 
       if (!pos && !atMax && !cryptoLimit && !stockLimit && !marketClosed) {
-        if (result.longScore >= 3 && liveState.balance > 5) {
+        if (result.longScore >= 2 && liveState.balance > 5) {
           const spend = liveState.balance * 0.10;
           const qty = +(spend / currentPrice).toFixed(8);
           const cost = qty * currentPrice;
@@ -409,7 +409,7 @@ async function liveTradeCheck() {
 
           const tag = isCrypto ? "₿" : "📊";
           addNotification("info", `${tag} LONG ${sym}`, `Acheté $${currentPrice.toFixed(2)} | Qty: ${qty} | TP: $${tpFinal} | SL: $${slFinal} | Score: ${result.longScore}`);
-        } else if (result.shortScore >= 3 && liveState.balance > 5) {
+        } else if (result.shortScore >= 2 && liveState.balance > 5) {
           const spend = liveState.balance * 0.10;
           const qty = +(spend / currentPrice).toFixed(8);
           const cost = qty * currentPrice;
