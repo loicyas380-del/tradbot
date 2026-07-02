@@ -317,7 +317,8 @@ async function liveTradeCheck() {
       const asset = ASSETS[sym];
       let rawData;
       if (asset?.type === "crypto" && asset.binance) {
-        try { rawData = await binanceKlines(asset.binance, "1d", 90); }
+        const yfSym = sym + "-USD";
+        try { rawData = (await yfChartFast(yfSym, "3mo", "1d")).data; }
         catch { continue; }
       } else {
         try { rawData = (await yfChartFast(sym, "3mo", "1d")).data; }
@@ -448,8 +449,16 @@ app.get("/api/markets", async (req, res) => {
     const cryptoIds = Object.entries(ASSETS).filter(([, a]) => a.type === "crypto");
     const stockIds = Object.entries(ASSETS).filter(([, a]) => a.type === "stock");
     let cryptoResults = [];
-    try { cryptoResults = await binanceTicker(cryptoIds.map(([id, a]) => ({ id, name: a.name, binance: a.binance }))); }
-    catch {
+    try {
+      cryptoResults = await Promise.all(
+        cryptoIds.map(async ([id, a]) => {
+          const r = await yfChartFast(id + "-USD", "1d", "1d");
+          const price = r.meta?.price || a.base;
+          const prev = r.meta?.previousClose || a.base;
+          return { symbol: id, name: a.name, price: +price.toFixed(2), change: +(price - prev).toFixed(2), changePercent: +(((price - prev) / prev) * 100).toFixed(2) };
+        })
+      );
+    } catch {
       cryptoResults = cryptoIds.map(([id, a]) => ({
         symbol: id, name: a.name, price: a.base,
         change: +(a.base * (Math.random() - 0.5) * 0.02).toFixed(2),
