@@ -175,6 +175,17 @@ const ASSETS = {
   "LTC":   { name: "Litecoin",    base: 85,    vol: 0.03,  type: "crypto", binance: "LTCUSDT" },
   "BCH":   { name: "Bitcoin Cash",base: 480,   vol: 0.03,  type: "crypto", binance: "BCHUSDT" },
   "ETC":   { name: "Ethereum Classic", base: 25, vol: 0.035, type: "crypto", binance: "ETCUSDT" },
+  // ── MICRO CRYPTO (ultra volatile) ──
+  "SHIB":  { name: "Shiba Inu",    base: 0.000025, vol: 0.07, type: "crypto" },
+  "BONK":  { name: "Bonk",         base: 0.00002,  vol: 0.08, type: "crypto" },
+  "FLOKI": { name: "Floki",        base: 0.00017,  vol: 0.08, type: "crypto" },
+  "NEIRO": { name: "Neiro",        base: 0.0005,   vol: 0.09, type: "crypto" },
+  "BRETT": { name: "Brett",        base: 0.12,     vol: 0.09, type: "crypto" },
+  "TURBO": { name: "Turbo",        base: 0.006,    vol: 0.10, type: "crypto" },
+  "MEME":  { name: "Memecoin",     base: 0.012,    vol: 0.09, type: "crypto" },
+  "1000PEPE": { name: "1000Pepe",  base: 0.012,    vol: 0.08, type: "crypto" },
+  "ORDI":  { name: "Ordinals",     base: 30,       vol: 0.06, type: "crypto" },
+  "STX":   { name: "Stacks",       base: 1.8,      vol: 0.06, type: "crypto" },
 };
 
 function isStockMarketOpen() {
@@ -192,8 +203,8 @@ const rangeDays = { "1w": 7, "1mo": 30, "3mo": 90, "6mo": 180, "1y": 365, "2y": 
 // ═══════════════════════════════════════════════════════════════
 // LIVE TRADING ENGINE
 // ═══════════════════════════════════════════════════════════════
-const MAX_POSITIONS = 20;
-const MAX_CRYPTO = 7;
+const MAX_POSITIONS = 30;
+const MAX_CRYPTO = 15;
 const MAX_STOCKS = 3;
 const MAX_STOCK_FAST = 10;
 const INITIAL_BALANCE = 1000;
@@ -316,6 +327,26 @@ function analyzeDay(ana, i) {
     shortScore += 4; shortReasons.push("Counter-trend overbought");
   }
 
+  // COUNTER-TREND LONG (oversold bounce)
+  if (!uptrend && rsiVal < 30 && bbPct < 0.1) {
+    longScore += 3; longReasons.push("Counter-trend oversold");
+  } else if (!uptrend && rsiVal < 40 && bbPct < 0.2) {
+    longScore += 1; longReasons.push("Weak RSI+BB low");
+  }
+  // COUNTER-TREND SHORT (overbought rejection)
+  if (!downtrend && rsiVal > 70 && bbPct > 0.8) {
+    shortScore += 3; shortReasons.push("Counter-trend overbought zone");
+  } else if (!downtrend && rsiVal > 60 && bbPct > 0.7) {
+    shortScore += 1; shortReasons.push("Weak RSI+BB high");
+  }
+  // MOMENTUM entries (no trend needed)
+  if (macdPrev && macdCurr) {
+    if (macdPrev.MACD < macdPrev.signal && macdCurr.MACD > macdCurr.signal) { longScore += 2; longReasons.push("MACD cross up (any)"); }
+    if (macdPrev.MACD > macdPrev.signal && macdCurr.MACD < macdCurr.signal) { shortScore += 2; shortReasons.push("MACD cross down (any)"); }
+  }
+  if (stochVal.k < 15) { longScore += 1; longReasons.push("Stoch ultra-low"); }
+  if (stochVal.k > 85) { shortScore += 1; shortReasons.push("Stoch ultra-high"); }
+
 const tp = +(price + atrVal * 2).toFixed(4);
   const sl = +(price - atrVal * 2).toFixed(4);
   const shortTp = +(price - atrVal * 2).toFixed(4);
@@ -358,17 +389,17 @@ async function liveTradeCheck() {
         let exitReason = "SIGNAL";
 
         const holdMinutes = (Date.now() - new Date(pos.entryTime).getTime()) / 60000;
-        const maxHold = asset?.maxHold || 9999;
+        const maxHold = asset?.maxHold || (asset?.type === "crypto" ? 240 : 9999);
         if (holdMinutes >= maxHold) { shouldExit = true; exitReason = "TIME"; }
 
         if (pos.side === "LONG") {
           if (currentPrice <= pos.sl) { shouldExit = true; exitPrice = pos.sl; exitReason = "SL"; }
           else if (currentPrice >= pos.tp) { shouldExit = true; exitPrice = pos.tp; exitReason = "TP"; }
-          else if (result.shortScore >= 2) { shouldExit = true; exitReason = "REVERSE"; }
+          else if (result.shortScore >= 1) { shouldExit = true; exitReason = "REVERSE"; }
         } else {
           if (currentPrice >= pos.sl) { shouldExit = true; exitPrice = pos.sl; exitReason = "SL"; }
           else if (currentPrice <= pos.tp) { shouldExit = true; exitPrice = pos.tp; exitReason = "TP"; }
-          else if (result.longScore >= 2) { shouldExit = true; exitReason = "REVERSE"; }
+          else if (result.longScore >= 1) { shouldExit = true; exitReason = "REVERSE"; }
         }
 
         if (shouldExit) {
@@ -415,7 +446,7 @@ async function liveTradeCheck() {
       const marketClosed = (isStock || isFast) && !isStockMarketOpen();
 
       if (!pos && !atMax && !cryptoLimit && !stockLimit && !fastLimit && !marketClosed) {
-        if (result.longScore >= 2 && liveState.balance > 5) {
+        if (result.longScore >= 1 && liveState.balance > 5) {
           const spend = liveState.balance * 0.07;
           const qty = +(spend / currentPrice).toFixed(8);
           const cost = qty * currentPrice;
@@ -434,7 +465,7 @@ async function liveTradeCheck() {
 
           const tag = isCrypto ? "₿" : isFast ? "⚡" : "📊";
           addNotification("info", `${tag} LONG ${sym}`, `Acheté $${currentPrice.toFixed(2)} | Qty: ${qty} | TP: $${tpFinal} | SL: $${slFinal} | Score: ${result.longScore}`);
-        } else if (result.shortScore >= 2 && liveState.balance > 5) {
+        } else if (result.shortScore >= 1 && liveState.balance > 5) {
           const spend = liveState.balance * 0.07;
           const qty = +(spend / currentPrice).toFixed(8);
           const cost = qty * currentPrice;
