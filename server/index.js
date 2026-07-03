@@ -127,6 +127,17 @@ const ASSETS = {
   "ZM":    { name: "Zoom",        base: 75,   vol: 0.025, type: "stock" },
   "ABNB":  { name: "Airbnb",      base: 145,  vol: 0.025, type: "stock" },
   "RIVN":  { name: "Rivian",      base: 18,   vol: 0.04,  type: "stock" },
+  // ── STOCKS VOLATILES (quick trades 1-2h) ──
+  "GME":   { name: "GameStop",    base: 25,   vol: 0.06,  type: "stock_fast", maxHold: 120 },
+  "AMC":   { name: "AMC",         base: 5,    vol: 0.07,  type: "stock_fast", maxHold: 120 },
+  "MSTR":  { name: "MicroStrategy", base: 1800, vol: 0.05, type: "stock_fast", maxHold: 90 },
+  "MARA":  { name: "Marathon",    base: 22,   vol: 0.055, type: "stock_fast", maxHold: 90 },
+  "RIOT":  { name: "Riot Platforms", base: 11, vol: 0.055, type: "stock_fast", maxHold: 90 },
+  "SOFI":  { name: "SoFi",        base: 8,    vol: 0.045, type: "stock_fast", maxHold: 120 },
+  "HOOD":  { name: "Robinhood",   base: 22,   vol: 0.05,  type: "stock_fast", maxHold: 90 },
+  "CVNA":  { name: "Carvana",     base: 130,  vol: 0.06,  type: "stock_fast", maxHold: 60 },
+  "ROKU":  { name: "Roku",        base: 65,   vol: 0.045, type: "stock_fast", maxHold: 120 },
+  "PLUG":  { name: "Plug Power",  base: 3,    vol: 0.07,  type: "stock_fast", maxHold: 120 },
   // ── CRYPTO (Binance) ──
   "BTC":   { name: "Bitcoin",     base: 62000, vol: 0.025, type: "crypto", binance: "BTCUSDT" },
   "ETH":   { name: "Ethereum",    base: 3400,  vol: 0.03,  type: "crypto", binance: "ETHUSDT" },
@@ -181,9 +192,10 @@ const rangeDays = { "1w": 7, "1mo": 30, "3mo": 90, "6mo": 180, "1y": 365, "2y": 
 // ═══════════════════════════════════════════════════════════════
 // LIVE TRADING ENGINE
 // ═══════════════════════════════════════════════════════════════
-const MAX_POSITIONS = 10;
+const MAX_POSITIONS = 20;
 const MAX_CRYPTO = 7;
 const MAX_STOCKS = 3;
+const MAX_STOCK_FAST = 10;
 const INITIAL_BALANCE = 1000;
 
 const liveState = {
@@ -214,6 +226,10 @@ function getCryptoCount() {
 
 function getStockCount() {
   return Object.keys(liveState.positions).filter(s => ASSETS[s]?.type === "stock").length;
+}
+
+function getStockFastCount() {
+  return Object.keys(liveState.positions).filter(s => ASSETS[s]?.type === "stock_fast").length;
 }
 
 // ─── INDICATORS ─────────────────────────────────────────────
@@ -341,6 +357,10 @@ async function liveTradeCheck() {
         let exitPrice = currentPrice;
         let exitReason = "SIGNAL";
 
+        const holdMinutes = (Date.now() - new Date(pos.entryTime).getTime()) / 60000;
+        const maxHold = asset?.maxHold || 9999;
+        if (holdMinutes >= maxHold) { shouldExit = true; exitReason = "TIME"; }
+
         if (pos.side === "LONG") {
           if (currentPrice <= pos.sl) { shouldExit = true; exitPrice = pos.sl; exitReason = "SL"; }
           else if (currentPrice >= pos.tp) { shouldExit = true; exitPrice = pos.tp; exitReason = "TP"; }
@@ -387,19 +407,23 @@ async function liveTradeCheck() {
       // ── ENTRY CHECK ──
       const isCrypto = asset?.type === "crypto";
       const isStock = asset?.type === "stock";
+      const isFast = asset?.type === "stock_fast";
       const atMax = getPositionCount() >= MAX_POSITIONS;
       const cryptoLimit = isCrypto && getCryptoCount() >= MAX_CRYPTO;
       const stockLimit = isStock && getStockCount() >= MAX_STOCKS;
-      const marketClosed = isStock && !isStockMarketOpen();
+      const fastLimit = isFast && getStockFastCount() >= MAX_STOCK_FAST;
+      const marketClosed = (isStock || isFast) && !isStockMarketOpen();
 
-      if (!pos && !atMax && !cryptoLimit && !stockLimit && !marketClosed) {
+      if (!pos && !atMax && !cryptoLimit && !stockLimit && !fastLimit && !marketClosed) {
         if (result.longScore >= 2 && liveState.balance > 5) {
-          const spend = liveState.balance * 0.10;
+          const spend = liveState.balance * 0.07;
           const qty = +(spend / currentPrice).toFixed(8);
           const cost = qty * currentPrice;
 
-          const tpFinal = isStock ? +(price + atrVal * 4).toFixed(4) : result.tp;
-          const slFinal = isStock ? +(price - atrVal * 3).toFixed(4) : result.sl;
+          let tpFinal, slFinal;
+          if (isFast) { tpFinal = +(price + atrVal * 1.5).toFixed(4); slFinal = +(price - atrVal * 1.5).toFixed(4); }
+          else if (isStock) { tpFinal = +(price + atrVal * 4).toFixed(4); slFinal = +(price - atrVal * 3).toFixed(4); }
+          else { tpFinal = result.tp; slFinal = result.sl; }
 
           liveState.positions[sym] = {
             side: "LONG", entryTime: new Date().toISOString(),
@@ -408,15 +432,17 @@ async function liveTradeCheck() {
           };
           liveState.balance -= cost;
 
-          const tag = isCrypto ? "₿" : "📊";
+          const tag = isCrypto ? "₿" : isFast ? "⚡" : "📊";
           addNotification("info", `${tag} LONG ${sym}`, `Acheté $${currentPrice.toFixed(2)} | Qty: ${qty} | TP: $${tpFinal} | SL: $${slFinal} | Score: ${result.longScore}`);
         } else if (result.shortScore >= 2 && liveState.balance > 5) {
-          const spend = liveState.balance * 0.10;
+          const spend = liveState.balance * 0.07;
           const qty = +(spend / currentPrice).toFixed(8);
           const cost = qty * currentPrice;
 
-          const shortTpFinal = isStock ? +(price - atrVal * 4).toFixed(4) : result.shortTp;
-          const shortSlFinal = isStock ? +(price + atrVal * 3).toFixed(4) : result.shortSl;
+          let shortTpFinal, shortSlFinal;
+          if (isFast) { shortTpFinal = +(price - atrVal * 1.5).toFixed(4); shortSlFinal = +(price + atrVal * 1.5).toFixed(4); }
+          else if (isStock) { shortTpFinal = +(price - atrVal * 4).toFixed(4); shortSlFinal = +(price + atrVal * 3).toFixed(4); }
+          else { shortTpFinal = result.shortTp; shortSlFinal = result.shortSl; }
 
           liveState.positions[sym] = {
             side: "SHORT", entryTime: new Date().toISOString(),
@@ -425,7 +451,7 @@ async function liveTradeCheck() {
           };
           liveState.balance -= cost;
 
-          const tag = isCrypto ? "₿" : "📊";
+          const tag = isCrypto ? "₿" : isFast ? "⚡" : "📊";
           addNotification("info", `${tag} SHORT ${sym}`, `Vendu $${currentPrice.toFixed(2)} | Qty: ${qty} | TP: $${shortTpFinal} | SL: $${shortSlFinal} | Score: ${result.shortScore}`);
         }
       }
