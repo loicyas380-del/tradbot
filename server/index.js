@@ -127,6 +127,21 @@ const ASSETS = {
   "ZM":    { name: "Zoom",        base: 75,   vol: 0.025, type: "stock" },
   "ABNB":  { name: "Airbnb",      base: 145,  vol: 0.025, type: "stock" },
   "RIVN":  { name: "Rivian",      base: 18,   vol: 0.04,  type: "stock" },
+  "CRM":   { name: "Salesforce",  base: 270,  vol: 0.018, type: "stock" },
+  "PANW":  { name: "Palo Alto",   base: 340,  vol: 0.022, type: "stock" },
+  "SNOW":  { name: "Snowflake",   base: 170,  vol: 0.03,  type: "stock" },
+  "DASH":  { name: "DoorDash",    base: 140,  vol: 0.03,  type: "stock" },
+  "RBLX":  { name: "Roblox",      base: 45,   vol: 0.04,  type: "stock" },
+  "SPOT":  { name: "Spotify",     base: 310,  vol: 0.025, type: "stock" },
+  "DKNG":  { name: "DraftKings",  base: 38,   vol: 0.035, type: "stock" },
+  "AI":    { name: "C3.ai",       base: 25,   vol: 0.05,  type: "stock" },
+  "ZS":    { name: "Zscaler",     base: 200,  vol: 0.025, type: "stock" },
+  "MDB":   { name: "MongoDB",     base: 260,  vol: 0.028, type: "stock" },
+  "UPST":  { name: "Upstart",     base: 55,   vol: 0.05,  type: "stock" },
+  "LCID":  { name: "Lucid",       base: 3.5,  vol: 0.06,  type: "stock" },
+  "W":     { name: "Wayfair",     base: 55,   vol: 0.04,  type: "stock" },
+  "TOST":  { name: "Toast",       base: 30,   vol: 0.035, type: "stock" },
+  "BILL":  { name: "Bill.com",    base: 65,   vol: 0.035, type: "stock" },
   // ── STOCKS VOLATILES (quick trades 1-2h) ──
   "GME":   { name: "GameStop",    base: 25,   vol: 0.06,  type: "stock_fast", maxHold: 120 },
   "AMC":   { name: "AMC",         base: 5,    vol: 0.07,  type: "stock_fast", maxHold: 120 },
@@ -138,7 +153,12 @@ const ASSETS = {
   "CVNA":  { name: "Carvana",     base: 130,  vol: 0.06,  type: "stock_fast", maxHold: 60 },
   "ROKU":  { name: "Roku",        base: 65,   vol: 0.045, type: "stock_fast", maxHold: 120 },
   "PLUG":  { name: "Plug Power",  base: 3,    vol: 0.07,  type: "stock_fast", maxHold: 120 },
-  // ── CRYPTO (only tokens verified on Yahoo Finance) ──
+  "BYND":  { name: "Beyond Meat", base: 8,    vol: 0.07,  type: "stock_fast", maxHold: 120 },
+  "U":     { name: "Unity",       base: 22,   vol: 0.05,  type: "stock_fast", maxHold: 120 },
+  "ARM":   { name: "ARM",         base: 170,  vol: 0.04,  type: "stock_fast", maxHold: 90 },
+  "IONQ":  { name: "IonQ",        base: 35,   vol: 0.06,  type: "stock_fast", maxHold: 90 },
+  "SMCI":  { name: "SuperMicro",  base: 500,  vol: 0.055, type: "stock_fast", maxHold: 90 },
+  // ── CRYPTO (verified on Yahoo Finance) ──
   "BTC":   { name: "Bitcoin",     base: 62000, vol: 0.025, type: "crypto" },
   "ETH":   { name: "Ethereum",    base: 3400,  vol: 0.03,  type: "crypto" },
   "SOL":   { name: "Solana",      base: 150,   vol: 0.035, type: "crypto" },
@@ -151,6 +171,58 @@ const ASSETS = {
   "AAVE":  { name: "Aave",        base: 95,    vol: 0.035, type: "crypto" },
   "LTC":   { name: "Litecoin",    base: 85,    vol: 0.03,  type: "crypto" },
   "SHIB":  { name: "Shiba Inu",   base: 0.000025, vol: 0.07, type: "crypto" },
+  "TRX":   { name: "Tron",        base: 0.12,  vol: 0.03,  type: "crypto" },
+  "HBAR":  { name: "Hedera",      base: 0.08,  vol: 0.04,  type: "crypto" },
+  "ICP":   { name: "ICP",         base: 12,    vol: 0.045, type: "crypto" },
+  "APT":   { name: "Aptos",       base: 8,     vol: 0.045, type: "crypto" },
+  "SUI":   { name: "Sui",         base: 3,     vol: 0.05,  type: "crypto" },
+  "NEAR":  { name: "NEAR",        base: 5.5,   vol: 0.045, type: "crypto" },
+  "PEPE":  { name: "Pepe",        base: 0.000012, vol: 0.06, type: "crypto" },
+  "FIL":   { name: "Filecoin",    base: 5.5,   vol: 0.045, type: "crypto" },
+  "RENDER":{ name: "Render",      base: 8,     vol: 0.045, type: "crypto" },
+  "FET":   { name: "Fetch.ai",    base: 2.2,   vol: 0.05,  type: "crypto" },
+  "INJ":   { name: "Injective",   base: 25,    vol: 0.045, type: "crypto" },
+  "TIA":   { name: "Celestia",    base: 10,    vol: 0.05,  type: "crypto" },
+  "SEI":   { name: "Sei",         base: 0.5,   vol: 0.055, type: "crypto" },
+  "OP":    { name: "Optimism",    base: 2.3,   vol: 0.045, type: "crypto" },
+  "GALA":  { name: "Gala",        base: 0.04,  vol: 0.055, type: "crypto" },
+  "SAND":  { name: "Sandbox",     base: 0.5,   vol: 0.05,  type: "crypto" },
+  "MANA":  { name: "Decentraland",base: 0.5,   vol: 0.05,  type: "crypto" },
+  "CRV":   { name: "Curve",       base: 0.5,   vol: 0.045, type: "crypto" },
+  "MKR":   { name: "Maker",       base: 2800,  vol: 0.03,  type: "crypto" },
+  "BCH":   { name: "Bitcoin Cash",base: 480,   vol: 0.03,  type: "crypto" },
+  "ETC":   { name: "Ethereum Classic", base: 25, vol: 0.035, type: "crypto" },
+  "ATOM":  { name: "Cosmos",      base: 8,     vol: 0.04,  type: "crypto" },
+  "DOT":   { name: "Polkadot",    base: 7,     vol: 0.04,  type: "crypto" },
+  "MATIC": { name: "Polygon",     base: 0.7,   vol: 0.045, type: "crypto" },
+  "BNB":   { name: "BNB",         base: 590,   vol: 0.02,  type: "crypto" },
+  // ── FOREX ──
+  "EURUSD": { name: "EUR/USD",    base: 1.09,  vol: 0.005, type: "forex", yfSym: "EURUSD=X" },
+  "GBPUSD": { name: "GBP/USD",    base: 1.27,  vol: 0.006, type: "forex", yfSym: "GBPUSD=X" },
+  "USDJPY": { name: "USD/JPY",    base: 161,   vol: 0.006, type: "forex", yfSym: "USDJPY=X" },
+  "AUDUSD": { name: "AUD/USD",    base: 0.65,  vol: 0.007, type: "forex", yfSym: "AUDUSD=X" },
+  "USDCAD": { name: "USD/CAD",    base: 1.37,  vol: 0.005, type: "forex", yfSym: "USDCAD=X" },
+  "USDCHF": { name: "USD/CHF",    base: 0.89,  vol: 0.005, type: "forex", yfSym: "USDCHF=X" },
+  "NZDUSD": { name: "NZD/USD",    base: 0.60,  vol: 0.007, type: "forex", yfSym: "NZDUSD=X" },
+  "EURGBP": { name: "EUR/GBP",    base: 0.86,  vol: 0.004, type: "forex", yfSym: "EURGBP=X" },
+  "EURJPY": { name: "EUR/JPY",    base: 175,   vol: 0.006, type: "forex", yfSym: "EURJPY=X" },
+  "GBPJPY": { name: "GBP/JPY",    base: 205,   vol: 0.008, type: "forex", yfSym: "GBPJPY=X" },
+  // ── MATIERES PREMIERES ──
+  "GOLD":   { name: "Or",         base: 2400,  vol: 0.012, type: "commodity", yfSym: "GC=F" },
+  "SILVER": { name: "Argent",     base: 30,    vol: 0.02,  type: "commodity", yfSym: "SI=F" },
+  "OIL":    { name: "Pétrole WTI", base: 80,   vol: 0.025, type: "commodity", yfSym: "CL=F" },
+  "GAS":    { name: "Gaz Naturel", base: 2.5,  vol: 0.04,  type: "commodity", yfSym: "NG=F" },
+  "COPPER": { name: "Cuivre",     base: 4.5,   vol: 0.018, type: "commodity", yfSym: "HG=F" },
+  "PLAT":   { name: "Platine",    base: 1000,  vol: 0.02,  type: "commodity", yfSym: "PL=F" },
+  // ── INDICES ──
+  "SPX":    { name: "S&P 500",    base: 5500,  vol: 0.008, type: "index", yfSym: "^GSPC" },
+  "NDX":    { name: "Nasdaq 100", base: 20000, vol: 0.012, type: "index", yfSym: "^NDX" },
+  "DJI":    { name: "Dow Jones",  base: 40000, vol: 0.008, type: "index", yfSym: "^DJI" },
+  "RUT":    { name: "Russell 2000", base: 2200, vol: 0.014, type: "index", yfSym: "^RUT" },
+  "VIX":    { name: "VIX",        base: 14,    vol: 0.06,  type: "index", yfSym: "^VIX" },
+  "FTSE":   { name: "FTSE 100",   base: 8200,  vol: 0.008, type: "index", yfSym: "^FTSE" },
+  "DAX":    { name: "DAX",        base: 18500, vol: 0.009, type: "index", yfSym: "^GDAXI" },
+  "NIKKEI": { name: "Nikkei 225", base: 39500, vol: 0.01,  type: "index", yfSym: "^N225" },
 };
 
 function isStockMarketOpen() {
@@ -163,12 +235,18 @@ function isStockMarketOpen() {
   return mins >= 570 && mins < 960;
 }
 
+function isForexOpen() {
+  const now = new Date();
+  const etDay = now.toLocaleString("en-US", { timeZone: "America/New_York", weekday: "short" });
+  return etDay !== "Sat" && etDay !== "Sun";
+}
+
 const rangeDays = { "1w": 7, "1mo": 30, "3mo": 90, "6mo": 180, "1y": 365, "2y": 730 };
 
 // ═══════════════════════════════════════════════════════════════
 // LIVE TRADING ENGINE
 // ═══════════════════════════════════════════════════════════════
-const MAX_POSITIONS = 15;
+const MAX_POSITIONS = 25;
 const MAX_CRYPTO = 8;
 const MAX_STOCKS = 3;
 const MAX_STOCK_FAST = 4;
@@ -317,7 +395,10 @@ async function liveTradeCheck() {
     try {
       const asset = ASSETS[sym];
       let rawData;
-      if (asset?.type === "crypto" && asset.binance) {
+      if (asset?.yfSym) {
+        try { rawData = (await yfChartFast(asset.yfSym, "3mo", "1d")).data; }
+        catch { continue; }
+      } else if (asset?.type === "crypto") {
         const yfSym = sym + "-USD";
         try { rawData = (await yfChartFast(yfSym, "3mo", "1d")).data; }
         catch { continue; }
@@ -394,14 +475,18 @@ async function liveTradeCheck() {
       const isCrypto = asset?.type === "crypto";
       const isStock = asset?.type === "stock";
       const isFast = asset?.type === "stock_fast";
+      const isForex = asset?.type === "forex";
+      const isCommodity = asset?.type === "commodity";
+      const isIndex = asset?.type === "index";
       const atMax = getPositionCount() >= MAX_POSITIONS;
       const cryptoLimit = isCrypto && getCryptoCount() >= MAX_CRYPTO;
       const stockLimit = isStock && getStockCount() >= MAX_STOCKS;
       const fastLimit = isFast && getStockFastCount() >= MAX_STOCK_FAST;
-      const marketClosed = (isStock || isFast) && !isStockMarketOpen();
+      const marketClosed = (isStock || isFast || isCommodity || isIndex) && !isStockMarketOpen();
+      const forexClosed = isForex && !isForexOpen();
       const cooldownActive = liveState.lastExitTime[sym] && (Date.now() - liveState.lastExitTime[sym]) < 30 * 60 * 1000;
 
-      if (!pos && !atMax && !cryptoLimit && !stockLimit && !fastLimit && !marketClosed && !cooldownActive) {
+      if (!pos && !atMax && !cryptoLimit && !stockLimit && !fastLimit && !marketClosed && !forexClosed && !cooldownActive) {
         if (result.longScore >= 3 && liveState.balance > 5) {
           const confidence = Math.min(result.longScore, 10);
           const spendRatio = 0.05 + (confidence - 3) * 0.025;
@@ -421,7 +506,7 @@ async function liveTradeCheck() {
           };
           liveState.balance -= cost;
 
-          const tag = isCrypto ? "₿" : isFast ? "⚡" : "📊";
+          const tag = isCrypto ? "₿" : isFast ? "⚡" : asset?.type === "forex" ? "💱" : asset?.type === "commodity" ? "🥇" : asset?.type === "index" ? "📈" : "📊";
           addNotification("info", `${tag} LONG ${sym}`, `Acheté $${currentPrice.toFixed(2)} | Qty: ${qty} | TP: $${tpFinal} | SL: $${slFinal} | Score: ${result.longScore}`);
         } else if (result.shortScore >= 3 && liveState.balance > 5) {
           const confidence = Math.min(result.shortScore, 10);
@@ -442,7 +527,7 @@ async function liveTradeCheck() {
           };
           liveState.balance -= cost;
 
-          const tag = isCrypto ? "₿" : isFast ? "⚡" : "📊";
+          const tag = isCrypto ? "₿" : isFast ? "⚡" : asset?.type === "forex" ? "💱" : asset?.type === "commodity" ? "🥇" : asset?.type === "index" ? "📈" : "📊";
           addNotification("info", `${tag} SHORT ${sym}`, `Vendu $${currentPrice.toFixed(2)} | Qty: ${qty} | TP: $${shortTpFinal} | SL: $${shortSlFinal} | Score: ${result.shortScore}`);
         }
       }
@@ -464,37 +549,34 @@ setTimeout(liveTradeCheck, 3000); // first check after 3s
 app.get("/api/markets", async (req, res) => {
   try {
     const cryptoIds = Object.entries(ASSETS).filter(([, a]) => a.type === "crypto");
-    const stockIds = Object.entries(ASSETS).filter(([, a]) => a.type === "stock");
-    let cryptoResults = [];
-    try {
-      cryptoResults = await Promise.all(
-        cryptoIds.map(async ([id, a]) => {
-          const r = await yfChartFast(id + "-USD", "1d", "1d");
-          const price = r.meta?.price || a.base;
-          const prev = r.meta?.previousClose || a.base;
-          return { symbol: id, name: a.name, price: +price.toFixed(2), change: +(price - prev).toFixed(2), changePercent: +(((price - prev) / prev) * 100).toFixed(2) };
-        })
-      );
-    } catch {
-      cryptoResults = cryptoIds.map(([id, a]) => ({
-        symbol: id, name: a.name, price: a.base,
-        change: +(a.base * (Math.random() - 0.5) * 0.02).toFixed(2),
-        changePercent: +((Math.random() - 0.5) * 4).toFixed(2),
-      }));
-    }
-    const stockResults = await Promise.allSettled(
-      stockIds.map(async ([id, a]) => {
+    const stockIds = Object.entries(ASSETS).filter(([, a]) => a.type === "stock" || a.type === "stock_fast");
+    const forexIds = Object.entries(ASSETS).filter(([, a]) => a.type === "forex");
+    const commodityIds = Object.entries(ASSETS).filter(([, a]) => a.type === "commodity");
+    const indexIds = Object.entries(ASSETS).filter(([, a]) => a.type === "index");
+
+    const fetchBatch = (entries, yfSymFn) => Promise.allSettled(
+      entries.map(async ([id, a]) => {
         try {
-          const r = await yfChartFast(id, "1d", "1d");
+          const r = await yfChartFast(yfSymFn(id, a), "1d", "1d");
           const price = r.meta?.price || a.base;
           const prev = r.meta?.previousClose || a.base;
-          return { symbol: id, name: a.name, price: +price.toFixed(2), change: +(price - prev).toFixed(2), changePercent: +(((price - prev) / prev) * 100).toFixed(2), volume: 0 };
+          return { symbol: id, name: a.name, type: a.type, price: +price.toFixed(4), change: +(price - prev).toFixed(4), changePercent: +(((price - prev) / prev) * 100).toFixed(2), volume: 0 };
         } catch {
-          return { symbol: id, name: a.name, price: a.base, change: 0, changePercent: 0, volume: 0 };
+          return { symbol: id, name: a.name, type: a.type, price: a.base, change: 0, changePercent: 0, volume: 0 };
         }
       })
     );
-    res.json([...cryptoResults, ...stockResults.filter((r) => r.status === "fulfilled").map((r) => r.value)]);
+
+    const [cryptoR, stockR, forexR, commR, idxR] = await Promise.all([
+      fetchBatch(cryptoIds, (id) => id + "-USD"),
+      fetchBatch(stockIds, (id) => id),
+      fetchBatch(forexIds, (id, a) => a.yfSym || id),
+      fetchBatch(commodityIds, (id, a) => a.yfSym || id),
+      fetchBatch(indexIds, (id, a) => a.yfSym || id),
+    ]);
+
+    const pick = (r) => r.filter((x) => x.status === "fulfilled").map((x) => x.value);
+    res.json([...pick(cryptoR), ...pick(stockR), ...pick(forexR), ...pick(commR), ...pick(idxR)]);
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
@@ -504,13 +586,9 @@ app.get("/api/chart/:symbol", async (req, res) => {
     const { range = "3mo" } = req.query;
     const asset = ASSETS[symbol];
     let rawData;
-    if (asset?.type === "crypto" && asset.binance) {
-      try { rawData = await binanceKlines(asset.binance, "1d", rangeDays[range] || 90); }
-      catch { rawData = generateData(symbol, rangeDays[range] || 90, asset.base, asset.vol); }
-    } else {
-      try { rawData = (await yfChartFast(symbol, range, "1d")).data; }
-      catch { rawData = generateData(symbol, rangeDays[range] || 90, asset?.base || 100, asset?.vol || 0.02); }
-    }
+    const yfSymbol = asset?.yfSym || (asset?.type === "crypto" ? symbol + "-USD" : symbol);
+    try { rawData = (await yfChartFast(yfSymbol, range, "1d")).data; }
+    catch { rawData = generateData(symbol, rangeDays[range] || 90, asset?.base || 100, asset?.vol || 0.02); }
     if (!rawData || rawData.length === 0) return res.status(404).json({ error: "No data" });
     const closes = rawData.map((d) => d.close);
     const highs = rawData.map((d) => d.high);

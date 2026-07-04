@@ -212,8 +212,7 @@ function App() {
         <div className="market-list">
           <AnimatePresence>
             {filteredMarkets.map((m, i) => {
-              const cryptoSyms = ["BTC", "ETH", "SOL", "BNB", "XRP", "DOGE", "ADA", "AVAX", "DOT", "LINK", "MATIC", "UNI", "ATOM", "FIL", "APT", "ARB", "OP", "NEAR", "SUI", "SEI", "PEPE", "WIF", "INJ", "TIA", "JUP", "RENDER", "FET", "GALA", "SAND", "MANA", "CRV", "AAVE", "MKR", "LTC", "BCH", "ETC"];
-              const type = cryptoSyms.includes(m.symbol) ? "crypto" : "stock";
+              const type = m.type || "stock";
               const isOpen = liveData?.openTrades?.some((t) => t.symbol === m.symbol);
               return (
                 <motion.div key={m.symbol} initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.03 }}
@@ -221,7 +220,7 @@ function App() {
                   onClick={() => setSelectedSymbol(m.symbol)}>
                   <div className="market-item-left">
                     <div className={`market-icon ${type}`}>
-                      {type === "crypto" ? <Zap size={14} /> : <BarChart3 size={14} />}
+                      {type === "crypto" ? <Zap size={14} /> : type === "forex" ? <Activity size={14} /> : <BarChart3 size={14} />}
                       {isOpen && <div className="position-dot" />}
                     </div>
                     <div>
@@ -243,7 +242,7 @@ function App() {
           {/* POSITIONS COUNTER */}
           <div className="positions-counter">
             <div className="pos-count-bar">
-                {Array.from({ length: 15 }).map((_, i) => (
+                {Array.from({ length: 20 }).map((_, i) => (
                 <div key={i} className={`pos-slot ${i < positionCount ? "filled" : ""}`} />
               ))}
             </div>

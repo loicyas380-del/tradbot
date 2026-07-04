@@ -304,8 +304,10 @@ body {
 
 .market-icon.crypto { background: linear-gradient(135deg, #f7931a, #e8850a); }
 .market-icon.stock { background: linear-gradient(135deg, var(--accent-blue), var(--accent-purple)); }
+.market-icon.stock_fast { background: linear-gradient(135deg, #ff6b6b, #ee5a24); }
 .market-icon.forex { background: linear-gradient(135deg, var(--accent-green), var(--accent-cyan)); }
 .market-icon.commodity { background: linear-gradient(135deg, var(--accent-yellow), #d97706); }
+.market-icon.index { background: linear-gradient(135deg, #8b5cf6, #ec4899); }
 
 .market-name {
   font-size: 13px;
