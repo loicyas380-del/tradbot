@@ -123,28 +123,29 @@ function App() {
     if (openPos) {
       const tpLine = chart.addSeries(LineSeries, { color: "#10b981", lineWidth: 1, lineStyle: 2, priceLineVisible: false, lastValueVisible: true });
       const slLine = chart.addSeries(LineSeries, { color: "#ef4444", lineWidth: 1, lineStyle: 2, priceLineVisible: false, lastValueVisible: true });
+      const entryLine = chart.addSeries(LineSeries, { color: "#3b82f6", lineWidth: 1, lineStyle: 2, priceLineVisible: false, lastValueVisible: true });
       tpLine.setData(chartData.data.map((d) => ({ time: d.time, value: openPos.tp })));
       slLine.setData(chartData.data.map((d) => ({ time: d.time, value: openPos.sl })));
+      entryLine.setData(chartData.data.map((d) => ({ time: d.time, value: openPos.entryPrice })));
     }
 
-    // Markers from trade history
+    // Markers from trade history + open position entry
     const relevantTrades = ld?.tradeHistory?.filter((t) => t.symbol === selectedSymbol) || [];
-    if (relevantTrades.length > 0) {
-      const markers = relevantTrades.map((t) => ({
-        time: t.entryTime.split("T")[0],
-        position: t.side === "LONG" ? "belowBar" : "aboveBar",
-        color: t.side === "LONG" ? "#10b981" : "#f59e0b",
-        shape: t.side === "LONG" ? "arrowUp" : "arrowDown",
-        text: `${t.side} $${t.entryPrice.toFixed(2)}`,
-      }));
-      const exitMarkers = relevantTrades.map((t) => ({
-        time: t.exitTime.split("T")[0],
-        position: t.side === "LONG" ? "aboveBar" : "belowBar",
-        color: t.pnl >= 0 ? "#10b981" : "#ef4444",
-        shape: t.side === "LONG" ? "arrowDown" : "arrowUp",
-        text: `${t.exitReason} ${t.pnl >= 0 ? "+" : ""}$${t.pnl.toFixed(2)}`,
-      }));
-      const allMarkers = [...markers, ...exitMarkers].sort((a, b) => new Date(a.time) - new Date(b.time));
+    const allMarkers = relevantTrades.flatMap((t) => [
+      { time: t.entryTime.split("T")[0], position: t.side === "LONG" ? "belowBar" : "aboveBar", color: t.side === "LONG" ? "#10b981" : "#f59e0b", shape: t.side === "LONG" ? "arrowUp" : "arrowDown", text: `${t.side} $${t.entryPrice.toFixed(2)}` },
+      { time: t.exitTime.split("T")[0], position: t.side === "LONG" ? "aboveBar" : "belowBar", color: t.pnl >= 0 ? "#10b981" : "#ef4444", shape: t.side === "LONG" ? "arrowDown" : "arrowUp", text: `${t.exitReason} ${t.pnl >= 0 ? "+" : ""}$${t.pnl.toFixed(2)}` },
+    ]);
+    if (openPos) {
+      allMarkers.push({
+        time: openPos.entryTime.split("T")[0],
+        position: openPos.side === "LONG" ? "belowBar" : "aboveBar",
+        color: openPos.side === "LONG" ? "#10b981" : "#f59e0b",
+        shape: openPos.side === "LONG" ? "arrowUp" : "arrowDown",
+        text: `ENTRY ${openPos.side} $${openPos.entryPrice.toFixed(2)}`,
+      });
+    }
+    if (allMarkers.length > 0) {
+      allMarkers.sort((a, b) => new Date(a.time) - new Date(b.time));
       createSeriesMarkers(candleSeries, allMarkers);
     }
 
