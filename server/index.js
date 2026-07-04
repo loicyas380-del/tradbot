@@ -403,7 +403,9 @@ async function liveTradeCheck() {
 
       if (!pos && !atMax && !cryptoLimit && !stockLimit && !fastLimit && !marketClosed && !cooldownActive) {
         if (result.longScore >= 3 && liveState.balance > 5) {
-          const spend = liveState.balance * 0.07;
+          const confidence = Math.min(result.longScore, 10);
+          const spendRatio = 0.05 + (confidence - 3) * 0.025;
+          const spend = liveState.balance * Math.min(spendRatio, 0.20);
           const qty = +(spend / currentPrice).toFixed(8);
           const cost = qty * currentPrice;
 
@@ -422,7 +424,9 @@ async function liveTradeCheck() {
           const tag = isCrypto ? "₿" : isFast ? "⚡" : "📊";
           addNotification("info", `${tag} LONG ${sym}`, `Acheté $${currentPrice.toFixed(2)} | Qty: ${qty} | TP: $${tpFinal} | SL: $${slFinal} | Score: ${result.longScore}`);
         } else if (result.shortScore >= 3 && liveState.balance > 5) {
-          const spend = liveState.balance * 0.07;
+          const confidence = Math.min(result.shortScore, 10);
+          const spendRatio = 0.05 + (confidence - 3) * 0.025;
+          const spend = liveState.balance * Math.min(spendRatio, 0.20);
           const qty = +(spend / currentPrice).toFixed(8);
           const cost = qty * currentPrice;
 
