@@ -342,6 +342,7 @@ function App() {
                         <div className="lpc-header">
                           <span className={`lpc-side ${p.side.toLowerCase()}`}>{p.side === "LONG" ? <TrendingUp size={14} /> : <TrendingDown size={14} />}{p.side}</span>
                           <span className="lpc-symbol">{p.symbol}</span>
+                          {p.partialTaken && <span className="lpc-partial">50% TP</span>}
                         </div>
                         <div className="lpc-details">
                           <span>Entry: ${p.entryPrice.toFixed(2)}</span>
@@ -482,6 +483,7 @@ function App() {
                       <div className="bpc-top">
                         <span className={`bpc-side ${p.side.toLowerCase()}`}>{p.side === "LONG" ? "🟢 LONG" : "🔴 SHORT"}</span>
                         <span className="bpc-symbol">{p.symbol}</span>
+                        {p.partialTaken && <span className="bpc-partial">50% TP</span>}
                       </div>
                       <div className="bpc-prices">
                         <div className="bpc-price">Entry ${p.entryPrice.toFixed(2)}</div>

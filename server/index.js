@@ -250,19 +250,51 @@ const MAX_POSITIONS = 25;
 const MAX_CRYPTO = 8;
 const MAX_STOCKS = 3;
 const MAX_STOCK_FAST = 4;
-const INITIAL_BALANCE = 1000;
+const INITIAL_BALANCE = 10000;
 
 const liveState = {
   balance: INITIAL_BALANCE,
-  positions: {},    // { symbol: { side, entryPrice, entryTime, qty, cost, tp, sl } }
-  tradeHistory: [], // all closed trades
-  notifications: [], // recent notifications
+  positions: {},
+  tradeHistory: [],
+  notifications: [],
   totalPnL: 0,
   wins: 0,
   losses: 0,
-  currentPrices: {}, // { symbol: price } — cached from last trade check
-  lastExitTime: {},  // { symbol: timestamp } — cooldown tracker
+  currentPrices: {},
+  lastExitTime: {},
+  peakBalance: INITIAL_BALANCE,
+  recentPnL: [],
 };
+
+// ── CORRELATION GROUPS (max 2 per group) ──
+const CORR_GROUPS = {
+  BTC_ECO: ["BTC", "MSTR", "MARA", "RIOT", "BCH", "ETC"],
+  ETH_ECO: ["ETH", "UNI", "AAVE", "MKR", "LINK", "OP", "ARB"],
+  L1_ALTS: ["SOL", "AVAX", "ADA", "DOT", "ATOM", "NEAR", "APT", "SUI", "SEI", "INJ", "TIA", "FIL"],
+  MEME: ["DOGE", "SHIB", "PEPE", "GALA", "SAND", "MANA", "CRV"],
+  RENDER_AI: ["RENDER", "FET", "ICP", "HBAR", "TRX"],
+  US_TECH: ["AAPL", "MSFT", "GOOGL", "AMZN", "META", "NVDA", "AMD"],
+  US_GROWTH: ["TSLA", "NFLX", "CRM", "PANW", "SNOW", "ZS", "MDB", "PLTR", "CRWD", "NET"],
+  US_CONSUMER: ["DIS", "UBER", "SHOP", "COIN", "SQ", "ABNB", "SPOT", "DKNG"],
+  US_SPECUL: ["GME", "AMC", "SOFI", "HOOD", "CVNA", "PLUG", "BYND", "U", "NIO", "LCID", "W", "RIVN", "SNAP", "ZM", "TOST", "BILL", "UPST", "INTC", "BA", "PYPL", "AI", "RBLX", "DASH", "ARM", "IONQ", "SMCI", "ROKU"],
+  FOREX_MAJOR: ["EURUSD", "GBPUSD", "AUDUSD", "NZDUSD"],
+  FOREX_CROSS: ["EURGBP", "EURJPY", "GBPJPY"],
+  US_INDICES: ["SPX", "NDX", "DJI", "RUT"],
+  EU_INDICES: ["FTSE", "DAX"],
+  COMMODITY_METALS: ["GOLD", "SILVER", "COPPER", "PLAT"],
+  COMMODITY_ENERGY: ["OIL", "GAS"],
+};
+
+function getCorrelationGroup(sym) {
+  for (const [group, syms] of Object.entries(CORR_GROUPS)) {
+    if (syms.includes(sym)) return group;
+  }
+  return null;
+}
+
+function getGroupCount(group) {
+  return Object.keys(liveState.positions).filter(s => getCorrelationGroup(s) === group).length;
+}
 
 function addNotification(type, title, message) {
   const notif = { id: Date.now(), type, title, message, time: new Date().toISOString() };
@@ -332,12 +364,15 @@ function analyzeDay(ana, i) {
   const sma200Val = getVal(sma200, s200I);
   const atrVal = getVal(atr, aI);
   const stochVal = getVal(stoch, sI);
+  const volNow = getVal(volumes, i);
+  const volAvg = getVal(volSma20, vI);
 
   if (rsiVal == null || !macdCurr || !bbVal || !ema20Val || !ema50Val || !atrVal || !stochVal) return null;
 
   const uptrend = ema20Val > ema50Val && (sma200Val == null || price > sma200Val);
   const downtrend = ema20Val < ema50Val && (sma200Val == null || price < sma200Val);
   const bbPct = (price - bbVal.lower) / (bbVal.upper - bbVal.lower);
+  const volumeConfirm = volNow && volAvg ? volNow > volAvg * 0.8 : true;
 
   // LONG
   let longScore = 0, longReasons = [];
@@ -371,7 +406,6 @@ function analyzeDay(ana, i) {
     shortScore += 4; shortReasons.push("Counter-trend overbought");
   }
 
-  // COUNTER-TREND entries (require very extreme signals)
   if (!uptrend && rsiVal < 25 && bbPct < 0.05) {
     longScore += 3; longReasons.push("Extreme oversold bounce");
   }
@@ -379,15 +413,50 @@ function analyzeDay(ana, i) {
     shortScore += 3; shortReasons.push("Extreme overbought rejection");
   }
 
-const tp = +(price + atrVal * 1.5).toFixed(4);
+  const tp = +(price + atrVal * 2).toFixed(4);
   const sl = +(price - atrVal * 1.5).toFixed(4);
-  const shortTp = +(price - atrVal * 1.5).toFixed(4);
+  const shortTp = +(price - atrVal * 2).toFixed(4);
   const shortSl = +(price + atrVal * 1.5).toFixed(4);
 
-  return { longScore, shortScore, longReasons, shortReasons, atr: atrVal, tp, sl, shortTp, shortSl, price };
+  return { longScore, shortScore, longReasons, shortReasons, atr: atrVal, tp, sl, shortTp, shortSl, price, volumeConfirm };
 }
 
-// ─── LIVE TRADE CHECK (runs every 30s) ─────────────────────
+// ─── MULTI-TIMEFRAME TREND (weekly) ─────────────────────────
+async function getWeeklyTrend(yfSymbol) {
+  try {
+    const weeklyData = (await yfChartFast(yfSymbol, "6mo", "1wk")).data;
+    if (!weeklyData || weeklyData.length < 20) return "neutral";
+    const closes = weeklyData.map(d => d.close);
+    const ema20w = EMA.calculate({ values: closes, period: 20 });
+    const ema50w = EMA.calculate({ values: closes, period: 50 });
+    const lastEma20 = ema20w[ema20w.length - 1];
+    const lastEma50 = ema50w[ema50w.length - 1];
+    const lastPrice = closes[closes.length - 1];
+    if (lastEma20 && lastEma50) {
+      if (lastEma20 > lastEma50 && lastPrice > lastEma20) return "bullish";
+      if (lastEma20 < lastEma50 && lastPrice < lastEma20) return "bearish";
+    }
+    return "neutral";
+  } catch { return "neutral"; }
+}
+
+// ─── EQUITY CURVE: position sizing multiplier ────────────────
+function getEquityMultiplier() {
+  const recent = liveState.recentPnL.slice(-10);
+  if (recent.length < 3) return 1.0;
+  const last3 = recent.slice(-3);
+  const last3AllLoss = last3.every(p => p < 0);
+  const last3AllWin = last3.every(p => p > 0);
+  if (last3AllLoss) return 0.5;
+  if (last3AllWin) return 1.3;
+  const last5 = recent.slice(-5);
+  const recentWinRate = last5.filter(p => p > 0).length / last5.length;
+  if (recentWinRate < 0.3) return 0.6;
+  if (recentWinRate > 0.6) return 1.2;
+  return 1.0;
+}
+
+// ─── LIVE TRADE CHECK (runs every 10s) ──────────────────────
 async function liveTradeCheck() {
   const symbols = Object.keys(ASSETS);
 
@@ -395,17 +464,9 @@ async function liveTradeCheck() {
     try {
       const asset = ASSETS[sym];
       let rawData;
-      if (asset?.yfSym) {
-        try { rawData = (await yfChartFast(asset.yfSym, "3mo", "1d")).data; }
-        catch { continue; }
-      } else if (asset?.type === "crypto") {
-        const yfSym = sym + "-USD";
-        try { rawData = (await yfChartFast(yfSym, "3mo", "1d")).data; }
-        catch { continue; }
-      } else {
-        try { rawData = (await yfChartFast(sym, "3mo", "1d")).data; }
-        catch { continue; }
-      }
+      const yfSymbol = asset?.yfSym || (asset?.type === "crypto" ? sym + "-USD" : sym);
+      try { rawData = (await yfChartFast(yfSymbol, "3mo", "1d")).data; }
+      catch { continue; }
       if (!rawData || rawData.length < 50) continue;
 
       const ana = computeIndicators(rawData);
@@ -413,56 +474,137 @@ async function liveTradeCheck() {
       const currentPrice = result ? result.price : rawData[rawData.length - 1].close;
       liveState.currentPrices[sym] = currentPrice;
       if (!result) continue;
-      if (asset?.type === "crypto") console.log(`[SCORE] ${sym}: long=${result.longScore} short=${result.shortScore} (${[...result.longReasons, ...result.shortReasons].join(", ") || "no signals"})`);
 
       const pos = liveState.positions[sym];
+      const atrVal = result.atr;
 
       // ── EXIT CHECK ──
       if (pos) {
         let shouldExit = false;
         let exitPrice = currentPrice;
         let exitReason = "SIGNAL";
+        let partialExit = false;
 
         const holdMinutes = (Date.now() - new Date(pos.entryTime).getTime()) / 60000;
-        const maxHold = asset?.maxHold || (asset?.type === "crypto" ? 240 : 9999);
+        const maxHold = asset?.maxHold || (asset?.type === "stock_fast" ? 120 : asset?.type === "crypto" ? 240 : asset?.type === "stock" ? 480 : 240);
         if (holdMinutes >= maxHold) { shouldExit = true; exitReason = "TIME"; }
 
-        if (pos.side === "LONG") {
-          if (currentPrice <= pos.sl) { shouldExit = true; exitPrice = pos.sl; exitReason = "SL"; }
-          else if (currentPrice >= pos.tp) { shouldExit = true; exitPrice = pos.tp; exitReason = "TP"; }
-          else if (result.shortScore >= 3 && holdMinutes >= 10) { shouldExit = true; exitReason = "REVERSE"; }
-        } else {
-          if (currentPrice >= pos.sl) { shouldExit = true; exitPrice = pos.sl; exitReason = "SL"; }
-          else if (currentPrice <= pos.tp) { shouldExit = true; exitPrice = pos.tp; exitReason = "TP"; }
-          else if (result.longScore >= 3 && holdMinutes >= 10) { shouldExit = true; exitReason = "REVERSE"; }
+        // ── TRAILING STOP ──
+        if (pos.side === "LONG" && !shouldExit) {
+          const bestPrice = pos.bestPrice || pos.entryPrice;
+          if (currentPrice > bestPrice) { liveState.positions[sym].bestPrice = currentPrice; }
+          const newBest = Math.max(bestPrice, currentPrice);
+          const trailDistance = atrVal * 1.5;
+          if (newBest > pos.entryPrice + atrVal) {
+            const newTrailSl = +(newBest - trailDistance).toFixed(4);
+            if (newTrailSl > pos.sl) { liveState.positions[sym].sl = newTrailSl; }
+          }
+          // partial TP: sell 50% at 1× ATR profit
+          if (!pos.partialTaken && currentPrice >= pos.entryPrice + atrVal) {
+            partialExit = true;
+            const halfQty = +(pos.qty / 2).toFixed(8);
+            const pnl = halfQty * (currentPrice - pos.entryPrice);
+            const costReturned = halfQty * pos.entryPrice;
+            liveState.balance += costReturned + pnl;
+            liveState.totalPnL += pnl;
+            liveState.recentPnL.push(pnl);
+            if (pnl > 0) liveState.wins++; else liveState.losses++;
+            liveState.positions[sym].qty = pos.qty - halfQty;
+            liveState.positions[sym].cost = (pos.qty - halfQty) * pos.entryPrice;
+            liveState.positions[sym].partialTaken = true;
+            liveState.positions[sym].sl = pos.entryPrice;
+            liveState.tradeHistory.unshift({
+              id: Date.now(), symbol: sym, side: "LONG", exitReason: "TP1_PARTIAL",
+              entryPrice: pos.entryPrice, exitPrice: currentPrice, qty: halfQty,
+              entryTime: pos.entryTime, exitTime: new Date().toISOString(),
+              pnl: +pnl.toFixed(4), pnlPercent: +(((currentPrice - pos.entryPrice) / pos.entryPrice) * 100).toFixed(2),
+              holdMinutes: Math.round(holdMinutes),
+            });
+            addNotification("success", `✅ PARTIAL TP LONG ${sym}`, `50% vendu @ $${currentPrice.toFixed(2)} | PnL: +$${pnl.toFixed(2)} | SL → breakeven`);
+          }
+        }
+
+        if (pos.side === "SHORT" && !shouldExit) {
+          const bestPrice = pos.bestPrice || pos.entryPrice;
+          if (currentPrice < bestPrice) { liveState.positions[sym].bestPrice = currentPrice; }
+          const newBest = Math.min(bestPrice, currentPrice);
+          const trailDistance = atrVal * 1.5;
+          if (newBest < pos.entryPrice - atrVal) {
+            const newTrailSl = +(newBest + trailDistance).toFixed(4);
+            if (newTrailSl < pos.sl) { liveState.positions[sym].sl = newTrailSl; }
+          }
+          if (!pos.partialTaken && currentPrice <= pos.entryPrice - atrVal) {
+            partialExit = true;
+            const halfQty = +(pos.qty / 2).toFixed(8);
+            const pnl = halfQty * (pos.entryPrice - currentPrice);
+            const costReturned = halfQty * pos.entryPrice;
+            liveState.balance += costReturned + pnl;
+            liveState.totalPnL += pnl;
+            liveState.recentPnL.push(pnl);
+            if (pnl > 0) liveState.wins++; else liveState.losses++;
+            liveState.positions[sym].qty = pos.qty - halfQty;
+            liveState.positions[sym].cost = (pos.qty - halfQty) * pos.entryPrice;
+            liveState.positions[sym].partialTaken = true;
+            liveState.positions[sym].sl = pos.entryPrice;
+            liveState.tradeHistory.unshift({
+              id: Date.now(), symbol: sym, side: "SHORT", exitReason: "TP1_PARTIAL",
+              entryPrice: pos.entryPrice, exitPrice: currentPrice, qty: halfQty,
+              entryTime: pos.entryTime, exitTime: new Date().toISOString(),
+              pnl: +pnl.toFixed(4), pnlPercent: +(((pos.entryPrice - currentPrice) / pos.entryPrice) * 100).toFixed(2),
+              holdMinutes: Math.round(holdMinutes),
+            });
+            addNotification("success", `✅ PARTIAL TP SHORT ${sym}`, `50% vendu @ $${currentPrice.toFixed(2)} | PnL: +$${pnl.toFixed(2)} | SL → breakeven`);
+          }
+        }
+
+        // ── FULL EXIT (SL/TP/REVERSE) ──
+        if (!partialExit) {
+          const posNow = liveState.positions[sym];
+          if (posNow) {
+            if (posNow.side === "LONG") {
+              if (currentPrice <= posNow.sl) { shouldExit = true; exitPrice = posNow.sl; exitReason = "SL"; }
+              else if (currentPrice >= posNow.tp) { shouldExit = true; exitPrice = posNow.tp; exitReason = "TP"; }
+              else if (result.shortScore >= 4 && holdMinutes >= 10) { shouldExit = true; exitReason = "REVERSE"; }
+            } else {
+              if (currentPrice >= posNow.sl) { shouldExit = true; exitPrice = posNow.sl; exitReason = "SL"; }
+              else if (currentPrice <= posNow.tp) { shouldExit = true; exitPrice = posNow.tp; exitReason = "TP"; }
+              else if (result.longScore >= 4 && holdMinutes >= 10) { shouldExit = true; exitReason = "REVERSE"; }
+            }
+          }
         }
 
         if (shouldExit) {
+          const posFinal = liveState.positions[sym];
+          if (!posFinal) continue;
           let pnl, pct;
-          if (pos.side === "LONG") {
-            pnl = pos.qty * (exitPrice - pos.entryPrice);
-            pct = ((exitPrice - pos.entryPrice) / pos.entryPrice) * 100;
+          if (posFinal.side === "LONG") {
+            pnl = posFinal.qty * (exitPrice - posFinal.entryPrice);
+            pct = ((exitPrice - posFinal.entryPrice) / posFinal.entryPrice) * 100;
           } else {
-            pnl = pos.qty * (pos.entryPrice - exitPrice);
-            pct = ((pos.entryPrice - exitPrice) / pos.entryPrice) * 100;
+            pnl = posFinal.qty * (posFinal.entryPrice - exitPrice);
+            pct = ((posFinal.entryPrice - exitPrice) / posFinal.entryPrice) * 100;
           }
-          liveState.balance += pos.cost + pnl;
+          liveState.balance += posFinal.cost + pnl;
           liveState.totalPnL += pnl;
+          liveState.recentPnL.push(pnl);
+          if (liveState.recentPnL.length > 20) liveState.recentPnL.shift();
           if (pnl > 0) liveState.wins++; else liveState.losses++;
 
           const trade = {
-            id: Date.now(), symbol: sym, side: pos.side, exitReason,
-            entryPrice: pos.entryPrice, exitPrice, qty: pos.qty,
-            entryTime: pos.entryTime, exitTime: new Date().toISOString(),
+            id: Date.now(), symbol: sym, side: posFinal.side, exitReason,
+            entryPrice: posFinal.entryPrice, exitPrice, qty: posFinal.qty,
+            entryTime: posFinal.entryTime, exitTime: new Date().toISOString(),
             pnl: +pnl.toFixed(4), pnlPercent: +pct.toFixed(2),
-            holdMinutes: Math.round((Date.now() - new Date(pos.entryTime).getTime()) / 60000),
+            holdMinutes: Math.round((Date.now() - new Date(posFinal.entryTime).getTime()) / 60000),
           };
           liveState.tradeHistory.unshift(trade);
           delete liveState.positions[sym];
           liveState.lastExitTime[sym] = Date.now();
 
+          if (liveState.balance > liveState.peakBalance) liveState.peakBalance = liveState.balance;
+
           const emoji = pnl >= 0 ? "✅" : "❌";
-          const sideLabel = pos.side === "LONG" ? "LONG" : "SHORT";
+          const sideLabel = posFinal.side === "LONG" ? "LONG" : "SHORT";
           addNotification(
             pnl >= 0 ? "success" : "error",
             `${emoji} FERMETURE ${sideLabel} ${sym}`,
@@ -486,44 +628,78 @@ async function liveTradeCheck() {
       const forexClosed = isForex && !isForexOpen();
       const cooldownActive = liveState.lastExitTime[sym] && (Date.now() - liveState.lastExitTime[sym]) < 30 * 60 * 1000;
 
-      if (!pos && !atMax && !cryptoLimit && !stockLimit && !fastLimit && !marketClosed && !forexClosed && !cooldownActive) {
-        if (result.longScore >= 3 && liveState.balance > 5) {
+      // ── CORRELATION FILTER ──
+      const corrGroup = getCorrelationGroup(sym);
+      const corrLimit = corrGroup ? getGroupCount(corrGroup) >= 2 : false;
+
+      // ── MIN SCORE BY TYPE ──
+      const minScore = isCrypto ? 4 : 3;
+
+      // ── VOLUME CONFIRMATION ──
+      const volumeOk = result.volumeConfirm;
+
+      // ── RISK/REWARD CHECK ──
+      let rrOk = true;
+      if (result.longScore >= minScore) {
+        const risk = currentPrice - result.sl;
+        const reward = result.tp - currentPrice;
+        rrOk = risk > 0 && (reward / risk) >= 1.3;
+      }
+      if (result.shortScore >= minScore && rrOk) {
+        const risk = result.shortSl - currentPrice;
+        const reward = currentPrice - result.shortTp;
+        rrOk = risk > 0 && (reward / risk) >= 1.3;
+      }
+
+      // ── EQUITY CURVE MULTIPLIER ──
+      const equityMult = getEquityMultiplier();
+
+      // ── DRAWDOWN CHECK: pause if down >15% from peak ──
+      const drawdown = (liveState.peakBalance - liveState.balance) / liveState.peakBalance;
+      const tradingPaused = drawdown > 0.15;
+
+      if (!pos && !atMax && !cryptoLimit && !stockLimit && !fastLimit && !marketClosed && !forexClosed && !cooldownActive && !corrLimit && !tradingPaused) {
+        if (result.longScore >= minScore && volumeOk && rrOk && liveState.balance > 50) {
           const confidence = Math.min(result.longScore, 10);
-          const spendRatio = 0.05 + (confidence - 3) * 0.025;
-          const spend = liveState.balance * Math.min(spendRatio, 0.20);
+          const baseRatio = 0.04 + (confidence - minScore) * 0.02;
+          const spendRatio = Math.min(baseRatio, 0.15) * equityMult;
+          const spend = liveState.balance * spendRatio;
           const qty = +(spend / currentPrice).toFixed(8);
           const cost = qty * currentPrice;
 
           let tpFinal, slFinal;
-          if (isFast) { tpFinal = +(price + atrVal * 1.5).toFixed(4); slFinal = +(price - atrVal * 1.5).toFixed(4); }
-          else if (isStock) { tpFinal = +(price + atrVal * 4).toFixed(4); slFinal = +(price - atrVal * 3).toFixed(4); }
+          if (isFast) { tpFinal = +(currentPrice + atrVal * 1.5).toFixed(4); slFinal = +(currentPrice - atrVal * 1.2).toFixed(4); }
+          else if (isStock) { tpFinal = +(currentPrice + atrVal * 3).toFixed(4); slFinal = +(currentPrice - atrVal * 2).toFixed(4); }
           else { tpFinal = result.tp; slFinal = result.sl; }
 
           liveState.positions[sym] = {
             side: "LONG", entryTime: new Date().toISOString(),
             entryPrice: currentPrice, qty, cost,
             tp: tpFinal, sl: slFinal,
+            bestPrice: currentPrice, partialTaken: false, initialQty: qty,
           };
           liveState.balance -= cost;
 
           const tag = isCrypto ? "₿" : isFast ? "⚡" : asset?.type === "forex" ? "💱" : asset?.type === "commodity" ? "🥇" : asset?.type === "index" ? "📈" : "📊";
           addNotification("info", `${tag} LONG ${sym}`, `Acheté $${currentPrice.toFixed(2)} | Qty: ${qty} | TP: $${tpFinal} | SL: $${slFinal} | Score: ${result.longScore}`);
-        } else if (result.shortScore >= 3 && liveState.balance > 5) {
+        } else if (result.shortScore >= minScore && volumeOk && rrOk && liveState.balance > 50) {
           const confidence = Math.min(result.shortScore, 10);
-          const spendRatio = 0.05 + (confidence - 3) * 0.025;
-          const spend = liveState.balance * Math.min(spendRatio, 0.20);
+          const baseRatio = 0.04 + (confidence - minScore) * 0.02;
+          const spendRatio = Math.min(baseRatio, 0.15) * equityMult;
+          const spend = liveState.balance * spendRatio;
           const qty = +(spend / currentPrice).toFixed(8);
           const cost = qty * currentPrice;
 
           let shortTpFinal, shortSlFinal;
-          if (isFast) { shortTpFinal = +(price - atrVal * 1.5).toFixed(4); shortSlFinal = +(price + atrVal * 1.5).toFixed(4); }
-          else if (isStock) { shortTpFinal = +(price - atrVal * 4).toFixed(4); shortSlFinal = +(price + atrVal * 3).toFixed(4); }
+          if (isFast) { shortTpFinal = +(currentPrice - atrVal * 1.5).toFixed(4); shortSlFinal = +(currentPrice + atrVal * 1.2).toFixed(4); }
+          else if (isStock) { shortTpFinal = +(currentPrice - atrVal * 3).toFixed(4); shortSlFinal = +(currentPrice + atrVal * 2).toFixed(4); }
           else { shortTpFinal = result.shortTp; shortSlFinal = result.shortSl; }
 
           liveState.positions[sym] = {
             side: "SHORT", entryTime: new Date().toISOString(),
             entryPrice: currentPrice, qty, cost,
             tp: shortTpFinal, sl: shortSlFinal,
+            bestPrice: currentPrice, partialTaken: false, initialQty: qty,
           };
           liveState.balance -= cost;
 
@@ -535,7 +711,7 @@ async function liveTradeCheck() {
       console.log(`[SKIP] ${sym}: ${err.message}`);
     }
   }
-  console.log(`[CYCLE] Positions: ${getPositionCount()}/${MAX_POSITIONS} | Crypto: ${getCryptoCount()}/${MAX_CRYPTO} | Stock: ${getStockCount()}/${MAX_STOCKS} | Balance: €${liveState.balance.toFixed(2)}`);
+  console.log(`[CYCLE] Pos: ${getPositionCount()}/${MAX_POSITIONS} | Bal: €${liveState.balance.toFixed(2)} | PnL: €${liveState.totalPnL.toFixed(2)} | WinRate: ${liveState.wins + liveState.losses > 0 ? ((liveState.wins / (liveState.wins + liveState.losses)) * 100).toFixed(0) : 0}% | EqMult: ${getEquityMultiplier().toFixed(2)}x`);
 }
 
 // Start live trading engine — check every 10 seconds
@@ -636,14 +812,17 @@ app.get("/api/live", (req, res) => {
     return {
       symbol: sym,
       name: ASSETS[sym]?.name || sym,
+      type: ASSETS[sym]?.type || "unknown",
       side: p.side,
       entryPrice: p.entryPrice,
       currentPrice: +currentPrice.toFixed(4),
       entryTime: p.entryTime,
       qty: p.qty,
+      initialQty: p.initialQty || p.qty,
       tp: p.tp,
       sl: p.sl,
       cost: p.cost,
+      partialTaken: p.partialTaken || false,
       unrealizedPnl: +unrealizedPnl.toFixed(4),
       unrealizedPnlPercent: +unrealizedPnlPercent.toFixed(2),
     };
@@ -667,6 +846,8 @@ app.get("/api/live", (req, res) => {
     openTrades,
     tradeHistory: liveState.tradeHistory.slice(0, 50),
     notifications: liveState.notifications.slice(0, 30),
+    drawdown: +(((liveState.peakBalance - liveState.balance) / liveState.peakBalance) * 100).toFixed(2),
+    equityMult: +getEquityMultiplier().toFixed(2),
   });
 });
 
@@ -688,7 +869,9 @@ app.post("/api/reset", (req, res) => {
   liveState.totalPnL = 0;
   liveState.wins = 0;
   liveState.losses = 0;
-  addNotification("info", "🔄 RESET", "Compte réinitialisé à €1000");
+  liveState.recentPnL = [];
+  liveState.peakBalance = INITIAL_BALANCE;
+  addNotification("info", "🔄 RESET", `Compte réinitialisé à €${INITIAL_BALANCE}`);
   res.json({ ok: true });
 });
 
