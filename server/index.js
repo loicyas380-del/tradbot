@@ -138,54 +138,19 @@ const ASSETS = {
   "CVNA":  { name: "Carvana",     base: 130,  vol: 0.06,  type: "stock_fast", maxHold: 60 },
   "ROKU":  { name: "Roku",        base: 65,   vol: 0.045, type: "stock_fast", maxHold: 120 },
   "PLUG":  { name: "Plug Power",  base: 3,    vol: 0.07,  type: "stock_fast", maxHold: 120 },
-  // ── CRYPTO (Binance) ──
-  "BTC":   { name: "Bitcoin",     base: 62000, vol: 0.025, type: "crypto", binance: "BTCUSDT" },
-  "ETH":   { name: "Ethereum",    base: 3400,  vol: 0.03,  type: "crypto", binance: "ETHUSDT" },
-  "SOL":   { name: "Solana",      base: 150,   vol: 0.035, type: "crypto", binance: "SOLUSDT" },
-  "BNB":   { name: "BNB",         base: 590,   vol: 0.02,  type: "crypto", binance: "BNBUSDT" },
-  "XRP":   { name: "XRP",         base: 0.52,  vol: 0.03,  type: "crypto", binance: "XRPUSDT" },
-  "DOGE":  { name: "Dogecoin",    base: 0.15,  vol: 0.04,  type: "crypto", binance: "DOGEUSDT" },
-  "ADA":   { name: "Cardano",     base: 0.45,  vol: 0.035, type: "crypto", binance: "ADAUSDT" },
-  "AVAX":  { name: "Avalanche",   base: 35,    vol: 0.035, type: "crypto", binance: "AVAXUSDT" },
-  "DOT":   { name: "Polkadot",    base: 7,     vol: 0.035, type: "crypto", binance: "DOTUSDT" },
-  "LINK":  { name: "Chainlink",   base: 14,    vol: 0.03,  type: "crypto", binance: "LINKUSDT" },
-  "MATIC": { name: "Polygon",     base: 0.7,   vol: 0.035, type: "crypto", binance: "MATICUSDT" },
-  "UNI":   { name: "Uniswap",     base: 7.5,   vol: 0.035, type: "crypto", binance: "UNIUSDT" },
-  "ATOM":  { name: "Cosmos",      base: 8,     vol: 0.035, type: "crypto", binance: "ATOMUSDT" },
-  "FIL":   { name: "Filecoin",    base: 5.5,   vol: 0.04,  type: "crypto", binance: "FILUSDT" },
-  "APT":   { name: "Aptos",       base: 8,     vol: 0.04,  type: "crypto", binance: "APTUSDT" },
-  "ARB":   { name: "Arbitrum",    base: 1.1,   vol: 0.04,  type: "crypto", binance: "ARBUSDT" },
-  "OP":    { name: "Optimism",    base: 2.3,   vol: 0.04,  type: "crypto", binance: "OPUSDT" },
-  "NEAR":  { name: "NEAR",        base: 5.5,   vol: 0.04,  type: "crypto", binance: "NEARUSDT" },
-  "SUI":   { name: "Sui",         base: 3,     vol: 0.045, type: "crypto", binance: "SUIUSDT" },
-  "SEI":   { name: "Sei",         base: 0.5,   vol: 0.05,  type: "crypto", binance: "SEIUSDT" },
-  "PEPE":  { name: "Pepe",        base: 0.000012, vol: 0.06, type: "crypto", binance: "PEPEUSDT" },
-  "WIF":   { name: "Dogwifhat",   base: 2.5,   vol: 0.05,  type: "crypto", binance: "WIFUSDT" },
-  "INJ":   { name: "Injective",   base: 25,    vol: 0.04,  type: "crypto", binance: "INJUSDT" },
-  "TIA":   { name: "Celestia",    base: 10,    vol: 0.045, type: "crypto", binance: "TIAUSDT" },
-  "JUP":   { name: "Jupiter",     base: 1.2,   vol: 0.05,  type: "crypto", binance: "JUPUSDT" },
-  "RENDER":{ name: "Render",      base: 8,     vol: 0.045, type: "crypto", binance: "RENDERUSDT" },
-  "FET":   { name: "Fetch.ai",    base: 2.2,   vol: 0.05,  type: "crypto", binance: "FETUSDT" },
-  "GALA":  { name: "Gala",        base: 0.04,  vol: 0.05,  type: "crypto", binance: "GALAUSDT" },
-  "SAND":  { name: "Sandbox",     base: 0.5,   vol: 0.045, type: "crypto", binance: "SANDUSDT" },
-  "MANA":  { name: "Decentraland",base: 0.5,   vol: 0.045, type: "crypto", binance: "MANAUSDT" },
-  "CRV":   { name: "Curve",       base: 0.5,   vol: 0.045, type: "crypto", binance: "CRVUSDT" },
-  "AAVE":  { name: "Aave",        base: 95,    vol: 0.035, type: "crypto", binance: "AAVEUSDT" },
-  "MKR":   { name: "Maker",       base: 2800,  vol: 0.03,  type: "crypto", binance: "MKRUSDT" },
-  "LTC":   { name: "Litecoin",    base: 85,    vol: 0.03,  type: "crypto", binance: "LTCUSDT" },
-  "BCH":   { name: "Bitcoin Cash",base: 480,   vol: 0.03,  type: "crypto", binance: "BCHUSDT" },
-  "ETC":   { name: "Ethereum Classic", base: 25, vol: 0.035, type: "crypto", binance: "ETCUSDT" },
-  // ── MICRO CRYPTO (ultra volatile) ──
-  "SHIB":  { name: "Shiba Inu",    base: 0.000025, vol: 0.07, type: "crypto" },
-  "BONK":  { name: "Bonk",         base: 0.00002,  vol: 0.08, type: "crypto" },
-  "FLOKI": { name: "Floki",        base: 0.00017,  vol: 0.08, type: "crypto" },
-  "NEIRO": { name: "Neiro",        base: 0.0005,   vol: 0.09, type: "crypto" },
-  "BRETT": { name: "Brett",        base: 0.12,     vol: 0.09, type: "crypto" },
-  "TURBO": { name: "Turbo",        base: 0.006,    vol: 0.10, type: "crypto" },
-  "MEME":  { name: "Memecoin",     base: 0.012,    vol: 0.09, type: "crypto" },
-  "1000PEPE": { name: "1000Pepe",  base: 0.012,    vol: 0.08, type: "crypto" },
-  "ORDI":  { name: "Ordinals",     base: 30,       vol: 0.06, type: "crypto" },
-  "STX":   { name: "Stacks",       base: 1.8,      vol: 0.06, type: "crypto" },
+  // ── CRYPTO (only tokens verified on Yahoo Finance) ──
+  "BTC":   { name: "Bitcoin",     base: 62000, vol: 0.025, type: "crypto" },
+  "ETH":   { name: "Ethereum",    base: 3400,  vol: 0.03,  type: "crypto" },
+  "SOL":   { name: "Solana",      base: 150,   vol: 0.035, type: "crypto" },
+  "XRP":   { name: "XRP",         base: 0.52,  vol: 0.03,  type: "crypto" },
+  "DOGE":  { name: "Dogecoin",    base: 0.15,  vol: 0.04,  type: "crypto" },
+  "ADA":   { name: "Cardano",     base: 0.45,  vol: 0.035, type: "crypto" },
+  "AVAX":  { name: "Avalanche",   base: 35,    vol: 0.035, type: "crypto" },
+  "LINK":  { name: "Chainlink",   base: 14,    vol: 0.03,  type: "crypto" },
+  "UNI":   { name: "Uniswap",     base: 7.5,   vol: 0.035, type: "crypto" },
+  "AAVE":  { name: "Aave",        base: 95,    vol: 0.035, type: "crypto" },
+  "LTC":   { name: "Litecoin",    base: 85,    vol: 0.03,  type: "crypto" },
+  "SHIB":  { name: "Shiba Inu",   base: 0.000025, vol: 0.07, type: "crypto" },
 };
 
 function isStockMarketOpen() {
@@ -203,10 +168,10 @@ const rangeDays = { "1w": 7, "1mo": 30, "3mo": 90, "6mo": 180, "1y": 365, "2y": 
 // ═══════════════════════════════════════════════════════════════
 // LIVE TRADING ENGINE
 // ═══════════════════════════════════════════════════════════════
-const MAX_POSITIONS = 30;
-const MAX_CRYPTO = 15;
+const MAX_POSITIONS = 15;
+const MAX_CRYPTO = 8;
 const MAX_STOCKS = 3;
-const MAX_STOCK_FAST = 10;
+const MAX_STOCK_FAST = 4;
 const INITIAL_BALANCE = 1000;
 
 const liveState = {
@@ -218,6 +183,7 @@ const liveState = {
   wins: 0,
   losses: 0,
   currentPrices: {}, // { symbol: price } — cached from last trade check
+  lastExitTime: {},  // { symbol: timestamp } — cooldown tracker
 };
 
 function addNotification(type, title, message) {
@@ -327,30 +293,18 @@ function analyzeDay(ana, i) {
     shortScore += 4; shortReasons.push("Counter-trend overbought");
   }
 
-  // COUNTER-TREND LONG (oversold bounce)
-  if (!uptrend && rsiVal < 30 && bbPct < 0.1) {
-    longScore += 3; longReasons.push("Counter-trend oversold");
-  } else if (!uptrend && rsiVal < 40 && bbPct < 0.2) {
-    longScore += 1; longReasons.push("Weak RSI+BB low");
+  // COUNTER-TREND entries (require very extreme signals)
+  if (!uptrend && rsiVal < 25 && bbPct < 0.05) {
+    longScore += 3; longReasons.push("Extreme oversold bounce");
   }
-  // COUNTER-TREND SHORT (overbought rejection)
-  if (!downtrend && rsiVal > 70 && bbPct > 0.8) {
-    shortScore += 3; shortReasons.push("Counter-trend overbought zone");
-  } else if (!downtrend && rsiVal > 60 && bbPct > 0.7) {
-    shortScore += 1; shortReasons.push("Weak RSI+BB high");
+  if (!downtrend && rsiVal > 80 && bbPct > 0.95) {
+    shortScore += 3; shortReasons.push("Extreme overbought rejection");
   }
-  // MOMENTUM entries (no trend needed)
-  if (macdPrev && macdCurr) {
-    if (macdPrev.MACD < macdPrev.signal && macdCurr.MACD > macdCurr.signal) { longScore += 2; longReasons.push("MACD cross up (any)"); }
-    if (macdPrev.MACD > macdPrev.signal && macdCurr.MACD < macdCurr.signal) { shortScore += 2; shortReasons.push("MACD cross down (any)"); }
-  }
-  if (stochVal.k < 15) { longScore += 1; longReasons.push("Stoch ultra-low"); }
-  if (stochVal.k > 85) { shortScore += 1; shortReasons.push("Stoch ultra-high"); }
 
-const tp = +(price + atrVal * 2).toFixed(4);
-  const sl = +(price - atrVal * 2).toFixed(4);
-  const shortTp = +(price - atrVal * 2).toFixed(4);
-  const shortSl = +(price + atrVal * 2).toFixed(4);
+const tp = +(price + atrVal * 1.5).toFixed(4);
+  const sl = +(price - atrVal * 1.5).toFixed(4);
+  const shortTp = +(price - atrVal * 1.5).toFixed(4);
+  const shortSl = +(price + atrVal * 1.5).toFixed(4);
 
   return { longScore, shortScore, longReasons, shortReasons, atr: atrVal, tp, sl, shortTp, shortSl, price };
 }
@@ -395,11 +349,11 @@ async function liveTradeCheck() {
         if (pos.side === "LONG") {
           if (currentPrice <= pos.sl) { shouldExit = true; exitPrice = pos.sl; exitReason = "SL"; }
           else if (currentPrice >= pos.tp) { shouldExit = true; exitPrice = pos.tp; exitReason = "TP"; }
-          else if (result.shortScore >= 1) { shouldExit = true; exitReason = "REVERSE"; }
+          else if (result.shortScore >= 3 && holdMinutes >= 10) { shouldExit = true; exitReason = "REVERSE"; }
         } else {
           if (currentPrice >= pos.sl) { shouldExit = true; exitPrice = pos.sl; exitReason = "SL"; }
           else if (currentPrice <= pos.tp) { shouldExit = true; exitPrice = pos.tp; exitReason = "TP"; }
-          else if (result.longScore >= 1) { shouldExit = true; exitReason = "REVERSE"; }
+          else if (result.longScore >= 3 && holdMinutes >= 10) { shouldExit = true; exitReason = "REVERSE"; }
         }
 
         if (shouldExit) {
@@ -424,6 +378,7 @@ async function liveTradeCheck() {
           };
           liveState.tradeHistory.unshift(trade);
           delete liveState.positions[sym];
+          liveState.lastExitTime[sym] = Date.now();
 
           const emoji = pnl >= 0 ? "✅" : "❌";
           const sideLabel = pos.side === "LONG" ? "LONG" : "SHORT";
@@ -444,9 +399,10 @@ async function liveTradeCheck() {
       const stockLimit = isStock && getStockCount() >= MAX_STOCKS;
       const fastLimit = isFast && getStockFastCount() >= MAX_STOCK_FAST;
       const marketClosed = (isStock || isFast) && !isStockMarketOpen();
+      const cooldownActive = liveState.lastExitTime[sym] && (Date.now() - liveState.lastExitTime[sym]) < 30 * 60 * 1000;
 
-      if (!pos && !atMax && !cryptoLimit && !stockLimit && !fastLimit && !marketClosed) {
-        if (result.longScore >= 1 && liveState.balance > 5) {
+      if (!pos && !atMax && !cryptoLimit && !stockLimit && !fastLimit && !marketClosed && !cooldownActive) {
+        if (result.longScore >= 3 && liveState.balance > 5) {
           const spend = liveState.balance * 0.07;
           const qty = +(spend / currentPrice).toFixed(8);
           const cost = qty * currentPrice;
@@ -465,7 +421,7 @@ async function liveTradeCheck() {
 
           const tag = isCrypto ? "₿" : isFast ? "⚡" : "📊";
           addNotification("info", `${tag} LONG ${sym}`, `Acheté $${currentPrice.toFixed(2)} | Qty: ${qty} | TP: $${tpFinal} | SL: $${slFinal} | Score: ${result.longScore}`);
-        } else if (result.shortScore >= 1 && liveState.balance > 5) {
+        } else if (result.shortScore >= 3 && liveState.balance > 5) {
           const spend = liveState.balance * 0.07;
           const qty = +(spend / currentPrice).toFixed(8);
           const cost = qty * currentPrice;
