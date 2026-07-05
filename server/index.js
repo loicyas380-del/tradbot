@@ -413,9 +413,9 @@ function analyzeDay(ana, i) {
     shortScore += 3; shortReasons.push("Extreme overbought rejection");
   }
 
-  const tp = +(price + atrVal * 2).toFixed(4);
+  const tp = +(price + atrVal * 1.5).toFixed(4);
   const sl = +(price - atrVal * 1.5).toFixed(4);
-  const shortTp = +(price - atrVal * 2).toFixed(4);
+  const shortTp = +(price - atrVal * 1.5).toFixed(4);
   const shortSl = +(price + atrVal * 1.5).toFixed(4);
 
   return { longScore, shortScore, longReasons, shortReasons, atr: atrVal, tp, sl, shortTp, shortSl, price, volumeConfirm };
@@ -486,7 +486,7 @@ async function liveTradeCheck() {
         let partialExit = false;
 
         const holdMinutes = (Date.now() - new Date(pos.entryTime).getTime()) / 60000;
-        const maxHold = asset?.maxHold || (asset?.type === "stock_fast" ? 120 : asset?.type === "crypto" ? 240 : asset?.type === "stock" ? 480 : 240);
+        const maxHold = asset?.maxHold || (asset?.type === "stock_fast" ? 120 : asset?.type === "crypto" ? 480 : asset?.type === "stock" ? 480 : 360);
         if (holdMinutes >= maxHold) { shouldExit = true; exitReason = "TIME"; }
 
         // ── TRAILING STOP ──
@@ -495,12 +495,12 @@ async function liveTradeCheck() {
           if (currentPrice > bestPrice) { liveState.positions[sym].bestPrice = currentPrice; }
           const newBest = Math.max(bestPrice, currentPrice);
           const trailDistance = atrVal * 1.5;
-          if (newBest > pos.entryPrice + atrVal) {
+          if (newBest > pos.entryPrice + atrVal * 0.75) {
             const newTrailSl = +(newBest - trailDistance).toFixed(4);
             if (newTrailSl > pos.sl) { liveState.positions[sym].sl = newTrailSl; }
           }
-          // partial TP: sell 50% at 1× ATR profit
-          if (!pos.partialTaken && currentPrice >= pos.entryPrice + atrVal) {
+          // partial TP: sell 50% at 0.75× ATR profit
+          if (!pos.partialTaken && currentPrice >= pos.entryPrice + atrVal * 0.75) {
             partialExit = true;
             const halfQty = +(pos.qty / 2).toFixed(8);
             const pnl = halfQty * (currentPrice - pos.entryPrice);
@@ -529,11 +529,11 @@ async function liveTradeCheck() {
           if (currentPrice < bestPrice) { liveState.positions[sym].bestPrice = currentPrice; }
           const newBest = Math.min(bestPrice, currentPrice);
           const trailDistance = atrVal * 1.5;
-          if (newBest < pos.entryPrice - atrVal) {
+          if (newBest < pos.entryPrice - atrVal * 0.75) {
             const newTrailSl = +(newBest + trailDistance).toFixed(4);
             if (newTrailSl < pos.sl) { liveState.positions[sym].sl = newTrailSl; }
           }
-          if (!pos.partialTaken && currentPrice <= pos.entryPrice - atrVal) {
+          if (!pos.partialTaken && currentPrice <= pos.entryPrice - atrVal * 0.75) {
             partialExit = true;
             const halfQty = +(pos.qty / 2).toFixed(8);
             const pnl = halfQty * (pos.entryPrice - currentPrice);
@@ -620,8 +620,16 @@ async function liveTradeCheck() {
       const isForex = asset?.type === "forex";
       const isCommodity = asset?.type === "commodity";
       const isIndex = asset?.type === "index";
-      const atMax = getPositionCount() >= MAX_POSITIONS;
-      const cryptoLimit = isCrypto && getCryptoCount() >= MAX_CRYPTO;
+
+      // ── DRAWDOWN ADAPTIVE LIMITS ──
+      const drawdown = (liveState.peakBalance - liveState.balance) / liveState.peakBalance;
+      const tradingPaused = drawdown > 0.15;
+      const inDrawdown = drawdown > 0.10;
+      const maxPos = inDrawdown ? Math.max(8, Math.floor(MAX_POSITIONS * 0.5)) : MAX_POSITIONS;
+      const maxCr = inDrawdown ? Math.max(3, Math.floor(MAX_CRYPTO * 0.5)) : MAX_CRYPTO;
+
+      const atMax = getPositionCount() >= maxPos;
+      const cryptoLimit = isCrypto && getCryptoCount() >= maxCr;
       const stockLimit = isStock && getStockCount() >= MAX_STOCKS;
       const fastLimit = isFast && getStockFastCount() >= MAX_STOCK_FAST;
       const marketClosed = (isStock || isFast || isCommodity || isIndex) && !isStockMarketOpen();
@@ -633,7 +641,8 @@ async function liveTradeCheck() {
       const corrLimit = corrGroup ? getGroupCount(corrGroup) >= 2 : false;
 
       // ── MIN SCORE BY TYPE ──
-      const minScore = isCrypto ? 4 : 3;
+      const baseMinScore = isCrypto ? 4 : 3;
+      const minScore = drawdown > 0.10 ? baseMinScore + 2 : baseMinScore;
 
       // ── VOLUME CONFIRMATION ──
       const volumeOk = result.volumeConfirm;
@@ -654,10 +663,6 @@ async function liveTradeCheck() {
       // ── EQUITY CURVE MULTIPLIER ──
       const equityMult = getEquityMultiplier();
 
-      // ── DRAWDOWN CHECK: pause if down >15% from peak ──
-      const drawdown = (liveState.peakBalance - liveState.balance) / liveState.peakBalance;
-      const tradingPaused = drawdown > 0.15;
-
       if (!pos && !atMax && !cryptoLimit && !stockLimit && !fastLimit && !marketClosed && !forexClosed && !cooldownActive && !corrLimit && !tradingPaused) {
         if (result.longScore >= minScore && volumeOk && rrOk && liveState.balance > 50) {
           const confidence = Math.min(result.longScore, 10);
@@ -669,7 +674,7 @@ async function liveTradeCheck() {
 
           let tpFinal, slFinal;
           if (isFast) { tpFinal = +(currentPrice + atrVal * 1.5).toFixed(4); slFinal = +(currentPrice - atrVal * 1.2).toFixed(4); }
-          else if (isStock) { tpFinal = +(currentPrice + atrVal * 3).toFixed(4); slFinal = +(currentPrice - atrVal * 2).toFixed(4); }
+          else if (isStock) { tpFinal = +(currentPrice + atrVal * 2).toFixed(4); slFinal = +(currentPrice - atrVal * 1.5).toFixed(4); }
           else { tpFinal = result.tp; slFinal = result.sl; }
 
           liveState.positions[sym] = {
@@ -692,7 +697,7 @@ async function liveTradeCheck() {
 
           let shortTpFinal, shortSlFinal;
           if (isFast) { shortTpFinal = +(currentPrice - atrVal * 1.5).toFixed(4); shortSlFinal = +(currentPrice + atrVal * 1.2).toFixed(4); }
-          else if (isStock) { shortTpFinal = +(currentPrice - atrVal * 3).toFixed(4); shortSlFinal = +(currentPrice + atrVal * 2).toFixed(4); }
+          else if (isStock) { shortTpFinal = +(currentPrice - atrVal * 2).toFixed(4); shortSlFinal = +(currentPrice + atrVal * 1.5).toFixed(4); }
           else { shortTpFinal = result.shortTp; shortSlFinal = result.shortSl; }
 
           liveState.positions[sym] = {
