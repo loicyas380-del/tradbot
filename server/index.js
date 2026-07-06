@@ -372,7 +372,7 @@ function analyzeDay(ana, i) {
   const uptrend = ema20Val > ema50Val && (sma200Val == null || price > sma200Val);
   const downtrend = ema20Val < ema50Val && (sma200Val == null || price < sma200Val);
   const bbPct = (price - bbVal.lower) / (bbVal.upper - bbVal.lower);
-  const volumeConfirm = volNow && volAvg ? volNow > volAvg * 0.8 : true;
+  const volumeConfirm = volNow && volAvg ? volNow > volAvg * 0.6 : true;
 
   // LONG
   let longScore = 0, longReasons = [];
@@ -564,11 +564,11 @@ async function liveTradeCheck() {
             if (posNow.side === "LONG") {
               if (currentPrice <= posNow.sl) { shouldExit = true; exitPrice = posNow.sl; exitReason = "SL"; }
               else if (currentPrice >= posNow.tp) { shouldExit = true; exitPrice = posNow.tp; exitReason = "TP"; }
-              else if (result.shortScore >= 4 && holdMinutes >= 10) { shouldExit = true; exitReason = "REVERSE"; }
+              else if (result.shortScore >= 3 && holdMinutes >= 10) { shouldExit = true; exitReason = "REVERSE"; }
             } else {
               if (currentPrice >= posNow.sl) { shouldExit = true; exitPrice = posNow.sl; exitReason = "SL"; }
               else if (currentPrice <= posNow.tp) { shouldExit = true; exitPrice = posNow.tp; exitReason = "TP"; }
-              else if (result.longScore >= 4 && holdMinutes >= 10) { shouldExit = true; exitReason = "REVERSE"; }
+              else if (result.longScore >= 3 && holdMinutes >= 10) { shouldExit = true; exitReason = "REVERSE"; }
             }
           }
         }
@@ -641,8 +641,8 @@ async function liveTradeCheck() {
       const corrLimit = corrGroup ? getGroupCount(corrGroup) >= 2 : false;
 
       // ── MIN SCORE BY TYPE ──
-      const baseMinScore = isCrypto ? 4 : 3;
-      const minScore = drawdown > 0.10 ? baseMinScore + 2 : baseMinScore;
+      const baseMinScore = isCrypto ? 3 : 3;
+      const minScore = drawdown > 0.10 ? baseMinScore + 1 : baseMinScore;
 
       // ── VOLUME CONFIRMATION ──
       const volumeOk = result.volumeConfirm;
@@ -652,16 +652,34 @@ async function liveTradeCheck() {
       if (result.longScore >= minScore) {
         const risk = currentPrice - result.sl;
         const reward = result.tp - currentPrice;
-        rrOk = risk > 0 && (reward / risk) >= 1.3;
+        rrOk = risk > 0 && (reward / risk) >= 1.0;
       }
       if (result.shortScore >= minScore && rrOk) {
         const risk = result.shortSl - currentPrice;
         const reward = currentPrice - result.shortTp;
-        rrOk = risk > 0 && (reward / risk) >= 1.3;
+        rrOk = risk > 0 && (reward / risk) >= 1.0;
       }
 
       // ── EQUITY CURVE MULTIPLIER ──
       const equityMult = getEquityMultiplier();
+
+      // Debug: log top scored assets
+      if (result.longScore >= 2 || result.shortScore >= 2) {
+        const blocks = [];
+        if (atMax) blocks.push("maxPos");
+        if (cryptoLimit) blocks.push("cryptoLim");
+        if (stockLimit) blocks.push("stockLim");
+        if (fastLimit) blocks.push("fastLim");
+        if (marketClosed) blocks.push("mktClosed");
+        if (forexClosed) blocks.push("fxClosed");
+        if (cooldownActive) blocks.push("cooldown");
+        if (corrLimit) blocks.push("corr");
+        if (tradingPaused) blocks.push("paused");
+        if (!volumeOk) blocks.push("vol");
+        if (!rrOk) blocks.push("rr");
+        if (result.longScore < minScore && result.shortScore < minScore) blocks.push(`score<${minScore}`);
+        if (blocks.length > 0) console.log(`[BLOCKED] ${sym}: L=${result.longScore} S=${result.shortScore} → ${blocks.join(", ")}`);
+      }
 
       if (!pos && !atMax && !cryptoLimit && !stockLimit && !fastLimit && !marketClosed && !forexClosed && !cooldownActive && !corrLimit && !tradingPaused) {
         if (result.longScore >= minScore && volumeOk && rrOk && liveState.balance > 50) {
