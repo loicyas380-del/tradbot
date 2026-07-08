@@ -143,21 +143,12 @@ const ASSETS = {
   "TOST":  { name: "Toast",       base: 30,   vol: 0.035, type: "stock" },
   "BILL":  { name: "Bill.com",    base: 65,   vol: 0.035, type: "stock" },
   // ── STOCKS VOLATILES (quick trades 1-2h) ──
-  "GME":   { name: "GameStop",    base: 25,   vol: 0.06,  type: "stock_fast", maxHold: 120 },
-  "AMC":   { name: "AMC",         base: 5,    vol: 0.07,  type: "stock_fast", maxHold: 120 },
   "MSTR":  { name: "MicroStrategy", base: 1800, vol: 0.05, type: "stock_fast", maxHold: 90 },
-  "MARA":  { name: "Marathon",    base: 22,   vol: 0.055, type: "stock_fast", maxHold: 90 },
-  "RIOT":  { name: "Riot Platforms", base: 11, vol: 0.055, type: "stock_fast", maxHold: 90 },
   "SOFI":  { name: "SoFi",        base: 8,    vol: 0.045, type: "stock_fast", maxHold: 120 },
   "HOOD":  { name: "Robinhood",   base: 22,   vol: 0.05,  type: "stock_fast", maxHold: 90 },
-  "CVNA":  { name: "Carvana",     base: 130,  vol: 0.06,  type: "stock_fast", maxHold: 60 },
   "ROKU":  { name: "Roku",        base: 65,   vol: 0.045, type: "stock_fast", maxHold: 120 },
-  "PLUG":  { name: "Plug Power",  base: 3,    vol: 0.07,  type: "stock_fast", maxHold: 120 },
-  "BYND":  { name: "Beyond Meat", base: 8,    vol: 0.07,  type: "stock_fast", maxHold: 120 },
   "U":     { name: "Unity",       base: 22,   vol: 0.05,  type: "stock_fast", maxHold: 120 },
   "ARM":   { name: "ARM",         base: 170,  vol: 0.04,  type: "stock_fast", maxHold: 90 },
-  "IONQ":  { name: "IonQ",        base: 35,   vol: 0.06,  type: "stock_fast", maxHold: 90 },
-  "SMCI":  { name: "SuperMicro",  base: 500,  vol: 0.055, type: "stock_fast", maxHold: 90 },
   // ── CRYPTO (verified on Yahoo Finance) ──
   "BTC":   { name: "Bitcoin",     base: 62000, vol: 0.025, type: "crypto" },
   "ETH":   { name: "Ethereum",    base: 3400,  vol: 0.03,  type: "crypto" },
@@ -263,25 +254,6 @@ const ASSETS = {
   "AKT":   { name: "Akash",       base: 3.5,    vol: 0.065, type: "crypto" },
   "OCEAN": { name: "Ocean",       base: 0.6,    vol: 0.06, type: "crypto" },
   "GRT":   { name: "Graph",       base: 0.25,   vol: 0.055, type: "crypto" },
-  // ── LEVERAGED ETF (x3 volatilité) ──
-  "TQQQ":  { name: "Nasdaq 3x",    base: 50,   vol: 0.035, type: "stock_fast", maxHold: 120, yfSym: "TQQQ" },
-  "SQQQ":  { name: "Nasdaq -3x",   base: 25,   vol: 0.04,  type: "stock_fast", maxHold: 120, yfSym: "SQQQ" },
-  "SOXL":  { name: "Semi 3x",      base: 25,   vol: 0.05,  type: "stock_fast", maxHold: 120, yfSym: "SOXL" },
-  "SOXS":  { name: "Semi -3x",     base: 15,   vol: 0.055, type: "stock_fast", maxHold: 120, yfSym: "SOXS" },
-  "FAS":   { name: "Finance 3x",   base: 40,   vol: 0.04,  type: "stock_fast", maxHold: 120, yfSym: "FAS" },
-  "FAZ":   { name: "Finance -3x",  base: 20,   vol: 0.045, type: "stock_fast", maxHold: 120, yfSym: "FAZ" },
-  "TECL":  { name: "Tech 3x",      base: 30,   vol: 0.045, type: "stock_fast", maxHold: 120, yfSym: "TECL" },
-  "TECS":  { name: "Tech -3x",     base: 10,   vol: 0.05,  type: "stock_fast", maxHold: 120, yfSym: "TECS" },
-  "LABU":  { name: "Biotech 3x",   base: 8,    vol: 0.06,  type: "stock_fast", maxHold: 90, yfSym: "LABU" },
-  "LABD":  { name: "Biotech -3x",  base: 15,   vol: 0.065, type: "stock_fast", maxHold: 90, yfSym: "LABD" },
-  "TNA":   { name: "Russell 3x",   base: 40,   vol: 0.05,  type: "stock_fast", maxHold: 120, yfSym: "TNA" },
-  "TZA":   { name: "Russell -3x",  base: 20,   vol: 0.055, type: "stock_fast", maxHold: 120, yfSym: "TZA" },
-  "SPXL":  { name: "S&P 3x",       base: 90,   vol: 0.035, type: "stock_fast", maxHold: 120, yfSym: "SPXL" },
-  "SPXS":  { name: "S&P -3x",      base: 15,   vol: 0.04,  type: "stock_fast", maxHold: 120, yfSym: "SPXS" },
-  "NVDL":  { name: "NVDA 2x",      base: 50,   vol: 0.055, type: "stock_fast", maxHold: 90, yfSym: "NVDL" },
-  "NVDS":  { name: "NVDA -2x",     base: 20,   vol: 0.06,  type: "stock_fast", maxHold: 90, yfSym: "NVDS" },
-  "CONL":  { name: "COIN 2x",      base: 30,   vol: 0.07,  type: "stock_fast", maxHold: 90, yfSym: "CONL" },
-  "FNGU":  { name: "FANG 3x",      base: 30,   vol: 0.05,  type: "stock_fast", maxHold: 90, yfSym: "FNGU" },
   // ── ACTIONS SUPPLEMENTAIRES ──
   "BABA":  { name: "Alibaba",     base: 85,    vol: 0.03,  type: "stock" },
   "JD":    { name: "JD.com",      base: 28,    vol: 0.035, type: "stock" },
@@ -410,11 +382,11 @@ const rangeDays = { "1w": 7, "1mo": 30, "3mo": 90, "6mo": 180, "1y": 365, "2y": 
 // ═══════════════════════════════════════════════════════════════
 // LIVE TRADING ENGINE
 // ═══════════════════════════════════════════════════════════════
-const MAX_POSITIONS = 40;
-const MAX_CRYPTO = 15;
-const MAX_STOCKS = 8;
-const MAX_STOCK_FAST = 10;
-const INITIAL_BALANCE = 10000;
+const MAX_POSITIONS = 12;
+const MAX_CRYPTO = 5;
+const MAX_STOCKS = 4;
+const MAX_STOCK_FAST = 3;
+const INITIAL_BALANCE = 100;
 
 const liveState = {
   balance: INITIAL_BALANCE,
@@ -432,12 +404,11 @@ const liveState = {
 
 // ── CORRELATION GROUPS (max 2 per group) ──
 const CORR_GROUPS = {
-  BTC_ECO: ["BTC", "MSTR", "MARA", "RIOT", "BCH", "ETC", "STX", "RUNE"],
+  BTC_ECO: ["BTC", "MSTR", "BCH", "ETC", "STX", "RUNE"],
   ETH_ECO: ["ETH", "UNI", "AAVE", "MKR", "LINK", "OP", "ARB", "LDO", "RPL", "COMP"],
   L1_ALTS: ["SOL", "AVAX", "ADA", "DOT", "ATOM", "NEAR", "APT", "SUI", "SEI", "INJ", "TIA", "FIL", "KAVA", "ALGO", "FTM", "EOS", "XLM"],
   MEME: ["DOGE", "SHIB", "PEPE", "GALA", "SAND", "MANA", "CRV", "BONK", "FLOKI", "TURBO", "BRETT", "WIF", "NEIRO", "CHZ", "ENJ", "AXS", "IMX", "BLUR"],
   AI_DEPIN: ["RENDER", "FET", "ICP", "HBAR", "TRX", "TAO", "AKT", "OCEAN", "GRT", "WLD", "THETA", "BAT"],
-  LEVERAGED: ["TQQQ", "SQQQ", "SOXL", "SOXS", "FAS", "FAZ", "TECL", "TECS", "LABU", "LABD", "TNA", "TZA", "SPXL", "SPXS", "NVDL", "NVDS", "CONL", "FNGU"],
   US_TECH: ["AAPL", "MSFT", "GOOGL", "AMZN", "META", "NVDA", "AMD", "AVGO", "QCOM", "TXN", "MU", "LRCX", "AMAT", "KLAC", "SNPS", "CDNS", "ANET", "DELL", "IBM", "ORCL", "NOW", "TEAM", "DDOG", "HUBS", "OKTA"],
   US_GROWTH: ["TSLA", "NFLX", "CRM", "PANW", "SNOW", "ZS", "MDB", "PLTR", "CRWD", "NET", "FTNT", "CYBR", "TTD", "WDAY", "VEEV", "DOCU", "SE", "GRAB"],
   US_CONSUMER: ["DIS", "UBER", "SHOP", "COIN", "SQ", "ABNB", "SPOT", "DKNG", "CCL", "AAL", "CMG", "SBUX", "NKE", "TGT", "COST", "WMT", "BBY", "ROST", "LULU"],
@@ -446,7 +417,7 @@ const CORR_GROUPS = {
   US_ENERGY: ["CVX", "XOM"],
   US_TELECOM: ["T", "VZ"],
   US_AUTO: ["F", "GM", "TSLA", "NIO", "RIVN", "LCID", "XPEV", "LI"],
-  US_SPECUL: ["GME", "AMC", "CVNA", "PLUG", "BYND", "U", "IONQ", "SMCI", "ROKU", "ARM", "UPST", "W", "RBLX", "DASH", "SNAP", "ZM", "TOST", "BILL", "AI", "INTC", "BA", "WBD"],
+  US_SPECUL: ["U", "ROKU", "ARM", "UPST", "W", "RBLX", "DASH", "SNAP", "ZM", "TOST", "BILL", "AI", "INTC", "BA", "WBD"],
   CHINA: ["BABA", "JD", "PDD", "XPEV", "LI", "NIO"],
   FOREX_MAJOR: ["EURUSD", "GBPUSD", "AUDUSD", "NZDUSD"],
   FOREX_CROSS: ["EURGBP", "EURJPY", "GBPJPY", "EURAUD", "EURCHF", "EURNZD", "GBPAUD", "GBPCAD", "AUDJPY", "CADJPY"],
@@ -822,8 +793,8 @@ async function processAsset(sym) {
       // ── DRAWDOWN ADAPTIVE LIMITS ──
       const totalEquity = getTotalEquity();
       const drawdown = liveState.peakBalance > 0 ? (liveState.peakBalance - totalEquity) / liveState.peakBalance : 0;
-      const tradingPaused = drawdown > 0.15;
-      const inDrawdown = drawdown > 0.10;
+      const tradingPaused = drawdown > 0.12;
+      const inDrawdown = drawdown > 0.07;
       const maxPos = inDrawdown ? Math.max(10, Math.floor(MAX_POSITIONS * 0.5)) : MAX_POSITIONS;
       const maxCr = inDrawdown ? Math.max(4, Math.floor(MAX_CRYPTO * 0.5)) : MAX_CRYPTO;
 
@@ -881,17 +852,17 @@ async function processAsset(sym) {
       }
 
       if (!pos && !atMax && !cryptoLimit && !stockLimit && !fastLimit && !marketClosed && !forexClosed && !cooldownActive && !corrLimit && !tradingPaused) {
-        if (result.longScore >= minScore && volumeOk && rrOk && liveState.balance > 50) {
+        if (result.longScore >= minScore && volumeOk && rrOk && liveState.balance > 3) {
           const confidence = Math.min(result.longScore, 10);
-          const baseRatio = 0.08 + (confidence - minScore) * 0.04;
-          const spendRatio = Math.min(baseRatio, 0.25) * equityMult;
+          const baseRatio = 0.05 + (confidence - minScore) * 0.02;
+          const spendRatio = Math.min(baseRatio, 0.15) * equityMult;
           const spend = liveState.balance * spendRatio;
           const qty = +(spend / currentPrice).toFixed(8);
           const cost = qty * currentPrice;
 
           let tpFinal, slFinal;
-          if (isFast) { tpFinal = +(currentPrice + atrVal * 1.5).toFixed(4); slFinal = +(currentPrice - atrVal * 1.2).toFixed(4); }
-          else if (isStock) { tpFinal = +(currentPrice + atrVal * 2).toFixed(4); slFinal = +(currentPrice - atrVal * 1.5).toFixed(4); }
+          if (isFast) { tpFinal = +(currentPrice + atrVal * 1.5).toFixed(4); slFinal = +(currentPrice - atrVal * 1.0).toFixed(4); }
+          else if (isStock) { tpFinal = +(currentPrice + atrVal * 2).toFixed(4); slFinal = +(currentPrice - atrVal * 1.2).toFixed(4); }
           else { tpFinal = result.tp; slFinal = result.sl; }
 
           liveState.positions[sym] = {
@@ -904,17 +875,17 @@ async function processAsset(sym) {
 
           const tag = isCrypto ? "₿" : isFast ? "⚡" : asset?.type === "forex" ? "💱" : asset?.type === "commodity" ? "🥇" : asset?.type === "index" ? "📈" : "📊";
           addNotification("info", `${tag} LONG ${sym}`, `Acheté $${currentPrice.toFixed(2)} | Qty: ${qty} | TP: $${tpFinal} | SL: $${slFinal} | Score: ${result.longScore}`);
-        } else if (result.shortScore >= minScore && volumeOk && rrOk && liveState.balance > 50) {
+        } else if (result.shortScore >= minScore && volumeOk && rrOk && liveState.balance > 3) {
           const confidence = Math.min(result.shortScore, 10);
-          const baseRatio = 0.08 + (confidence - minScore) * 0.04;
-          const spendRatio = Math.min(baseRatio, 0.25) * equityMult;
+          const baseRatio = 0.05 + (confidence - minScore) * 0.02;
+          const spendRatio = Math.min(baseRatio, 0.15) * equityMult;
           const spend = liveState.balance * spendRatio;
           const qty = +(spend / currentPrice).toFixed(8);
           const cost = qty * currentPrice;
 
           let shortTpFinal, shortSlFinal;
-          if (isFast) { shortTpFinal = +(currentPrice - atrVal * 1.5).toFixed(4); shortSlFinal = +(currentPrice + atrVal * 1.2).toFixed(4); }
-          else if (isStock) { shortTpFinal = +(currentPrice - atrVal * 2).toFixed(4); shortSlFinal = +(currentPrice + atrVal * 1.5).toFixed(4); }
+          if (isFast) { shortTpFinal = +(currentPrice - atrVal * 1.5).toFixed(4); shortSlFinal = +(currentPrice + atrVal * 1.0).toFixed(4); }
+          else if (isStock) { shortTpFinal = +(currentPrice - atrVal * 2).toFixed(4); shortSlFinal = +(currentPrice + atrVal * 1.2).toFixed(4); }
           else { shortTpFinal = result.shortTp; shortSlFinal = result.shortSl; }
 
           liveState.positions[sym] = {
