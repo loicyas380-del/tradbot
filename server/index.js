@@ -482,11 +482,11 @@ function addPnL(pnl) {
 
 // ─── ADAPTIVE RISK SYSTEM ───
 function getRiskProfile(equity) {
-  if (equity <= 50) return { name: "micro", maxRiskPct: 0.04, minScore: 5, maxPos: 15, maxPerGroup: 3, rr: 1.5, maxHoldMin: 120 };
-  if (equity <= 200) return { name: "small", maxRiskPct: 0.05, minScore: 4, maxPos: 20, maxPerGroup: 4, rr: 1.5, maxHoldMin: 180 };
-  if (equity <= 500) return { name: "medium", maxRiskPct: 0.07, minScore: 4, maxPos: 25, maxPerGroup: 5, rr: 1.2, maxHoldMin: 240 };
-  if (equity <= 2000) return { name: "large", maxRiskPct: 0.09, minScore: 3, maxPos: 30, maxPerGroup: 5, rr: 1.0, maxHoldMin: 360 };
-  return { name: "big", maxRiskPct: 0.12, minScore: 3, maxPos: 40, maxPerGroup: 6, rr: 1.0, maxHoldMin: 480 };
+  if (equity <= 50) return { name: "micro", maxRiskPct: 0.04, maxPos: 15, maxPerGroup: 3, maxHoldMin: 120 };
+  if (equity <= 200) return { name: "small", maxRiskPct: 0.05, maxPos: 20, maxPerGroup: 4, maxHoldMin: 180 };
+  if (equity <= 500) return { name: "medium", maxRiskPct: 0.07, maxPos: 25, maxPerGroup: 5, maxHoldMin: 240 };
+  if (equity <= 2000) return { name: "large", maxRiskPct: 0.09, maxPos: 30, maxPerGroup: 5, maxHoldMin: 360 };
+  return { name: "big", maxRiskPct: 0.12, maxPos: 40, maxPerGroup: 6, maxHoldMin: 480 };
 }
 
 // ── CORRELATION GROUPS (max 2 per group) ──
@@ -621,96 +621,106 @@ function analyzeDay(ana, i) {
 
   if (rsiVal == null || !macdCurr || !bbVal || !ema20Val || !ema50Val || !atrVal || !stochVal) return null;
 
-  const uptrend = ema20Val > ema50Val && (sma200Val == null || price > sma200Val);
-  const downtrend = ema20Val < ema50Val && (sma200Val == null || price < sma200Val);
   const bbPct = (price - bbVal.lower) / (bbVal.upper - bbVal.lower);
-  const volumeConfirm = volPrev && volAvg ? volPrev > volAvg * 0.8 : true;
+  const volumeOk = volPrev && volAvg ? volPrev > volAvg * 0.7 : true;
+  const volumeSpike = volNow && volAvg ? volNow > volAvg * 1.8 : false;
 
-  // ── ATR EXPANSION (simple check) ──
-  const atrExpanding = false;
-
-  // ── RSI MOMENTUM ──
+  // RSI prev for momentum
   const rsiPrev = getVal(rsi, rI - 1);
   const rsiRising = rsiPrev != null && rsiVal > rsiPrev;
   const rsiFalling = rsiPrev != null && rsiVal < rsiPrev;
 
-  // ── VOLUME SPIKE ──
-  const volumeSpike = volNow && volAvg ? volNow > volAvg * 2.0 : false;
-
-  // ── STOCHASTIC CONFIRMATION ──
+  // Stochastic
   const stochD = stochVal.d;
-  const stochConfirmLong = stochVal.k < 25 && stochD < 25;
-  const stochConfirmShort = stochVal.k > 75 && stochD > 75;
 
-  // ── BB SQUEEZE (narrow bands = volatility expansion imminent) ──
-  const bbWidth = bbVal ? (bbVal.upper - bbVal.lower) / ((bbVal.upper + bbVal.lower) / 2) : 0;
-  const bbSqueeze = bbWidth < 0.03;
+  // ═══════════════════════════════════════════════════════════════
+  // STRATEGY: TREND PULLBACK (proven approach)
+  // Trade in direction of trend, enter on pullbacks
+  // ═══════════════════════════════════════════════════════════════
 
-  // ── STRONG TREND (price above EMA20 AND EMA50 for long) ──
-  const strongUptrend = ema20Val > ema50Val && price > ema20Val && price > ema50Val;
-  const strongDowntrend = ema20Val < ema50Val && price < ema20Val && price < ema50Val;
+  // ── LONG SETUP ──
+  const longTrend = ema20Val > ema50Val;
+  const longTrendStrong = longTrend && (sma200Val == null || price > sma200Val);
+  const longPullback = rsiVal < 50 && rsiVal > 30;
+  const longMomentum = macdCurr.histogram > 0 || (macdPrev && macdCurr.histogram > macdPrev.histogram);
+  const longSupport = bbPct < 0.5;
+  const longStochOK = stochVal.k < 60;
+  const longPriceAboveEMA = price > ema20Val;
 
-  // LONG
-  let longScore = 0, longReasons = [];
-  if (uptrend) {
-    longScore += 2; longReasons.push("Uptrend");
-    if (rsiVal < 35) { longScore += 3; longReasons.push("RSI oversold"); }
-    else if (rsiVal < 42) { longScore += 1; longReasons.push("RSI low"); }
-    if (rsiRising) { longScore += 1; longReasons.push("RSI rising"); }
-    if (macdPrev && macdCurr) {
-      if (macdPrev.MACD < macdPrev.signal && macdCurr.MACD > macdCurr.signal) { longScore += 3; longReasons.push("MACD cross up"); }
-      else if (macdCurr.histogram > 0 && macdPrev.histogram <= 0) { longScore += 2; longReasons.push("MACD flip"); }
-      else if (macdCurr.histogram > macdPrev.histogram) { longScore += 1; longReasons.push("MACD rising"); }
-    }
-    if (bbPct < 0.15) { longScore += 2; longReasons.push("BB lower"); }
-    else if (bbPct < 0.3) { longScore += 1; longReasons.push("BB low zone"); }
-    if (stochVal.k < 25) { longScore += 1; longReasons.push("Stoch low"); }
-    if (price > ema20Val) { longScore += 1; longReasons.push("Above EMA20"); }
-    // NEW: HIGH-CONFIDENCE SIGNALS
-    if (volumeSpike) { longScore += 1; longReasons.push("Volume spike"); }
-    if (stochConfirmLong) { longScore += 1; longReasons.push("Stoch confirm"); }
-    if (bbSqueeze) { longScore += 1; longReasons.push("BB squeeze"); }
-    if (strongUptrend) { longScore += 1; longReasons.push("Strong trend"); }
-  }
+  const longChecklist = [
+    longTrend,
+    longPullback,
+    longMomentum,
+    longSupport,
+    longStochOK,
+    longPriceAboveEMA,
+    volumeOk,
+  ];
+  const longPassed = longChecklist.filter(Boolean).length;
+  const longReasons = [];
+  if (longTrend) longReasons.push("Trend↑");
+  if (longTrendStrong) longReasons.push("Strong↑");
+  if (longPullback) longReasons.push(`RSI${rsiVal.toFixed(0)}`);
+  if (longMomentum) longReasons.push("Mom↑");
+  if (longSupport) longReasons.push("BB low");
+  if (longStochOK) longReasons.push(`Stoch${stochVal.k.toFixed(0)}`);
+  if (longPriceAboveEMA) longReasons.push("AboveEMA");
+  if (volumeSpike) longReasons.push("VolSpike");
 
-  // SHORT
-  let shortScore = 0, shortReasons = [];
-  if (downtrend) {
-    shortScore += 2; shortReasons.push("Downtrend");
-    if (rsiVal > 65) { shortScore += 3; shortReasons.push("RSI overbought"); }
-    else if (rsiVal > 58) { shortScore += 1; shortReasons.push("RSI high"); }
-    if (rsiFalling) { shortScore += 1; shortReasons.push("RSI falling"); }
-    if (macdPrev && macdCurr) {
-      if (macdPrev.MACD > macdPrev.signal && macdCurr.MACD < macdCurr.signal) { shortScore += 3; shortReasons.push("MACD cross down"); }
-      else if (macdCurr.histogram < 0 && macdPrev.histogram >= 0) { shortScore += 2; shortReasons.push("MACD flip down"); }
-      else if (macdCurr.histogram < macdPrev.histogram) { shortScore += 1; shortReasons.push("MACD falling"); }
-    }
-    if (bbPct > 0.85) { shortScore += 2; shortReasons.push("BB upper"); }
-    else if (bbPct > 0.7) { shortScore += 1; shortReasons.push("BB high zone"); }
-    if (stochVal.k > 75) { shortScore += 1; shortReasons.push("Stoch high"); }
-    if (price < ema20Val) { shortScore += 1; shortReasons.push("Below EMA20"); }
-    // NEW: HIGH-CONFIDENCE SIGNALS
-    if (volumeSpike) { shortScore += 1; shortReasons.push("Volume spike"); }
-    if (stochConfirmShort) { shortScore += 1; shortReasons.push("Stoch confirm"); }
-    if (bbSqueeze) { shortScore += 1; shortReasons.push("BB squeeze"); }
-    if (strongDowntrend) { shortScore += 1; shortReasons.push("Strong trend"); }
-  } else if (rsiVal > 75 && bbPct > 0.9) {
-    shortScore += 4; shortReasons.push("Counter-trend overbought");
-  }
+  // LONG signal: trend + pullback + momentum + (support or stoch)
+  const longSignal = longTrend && longPullback && longMomentum && (longSupport || longStochOK) && longPriceAboveEMA && volumeOk;
 
-  if (!uptrend && rsiVal < 25 && bbPct < 0.05) {
-    longScore += 3; longReasons.push("Extreme oversold bounce");
-  }
-  if (!downtrend && rsiVal > 80 && bbPct > 0.95) {
-    shortScore += 3; shortReasons.push("Extreme overbought rejection");
-  }
+  // ── SHORT SETUP ──
+  const shortTrend = ema20Val < ema50Val;
+  const shortTrendStrong = shortTrend && (sma200Val == null || price < sma200Val);
+  const shortBounce = rsiVal > 50 && rsiVal < 70;
+  const shortMomentum = macdCurr.histogram < 0 || (macdPrev && macdCurr.histogram < macdPrev.histogram);
+  const shortResistance = bbPct > 0.5;
+  const shortStochOK = stochVal.k > 40;
+  const shortPriceBelowEMA = price < ema20Val;
 
+  const shortChecklist = [
+    shortTrend,
+    shortBounce,
+    shortMomentum,
+    shortResistance,
+    shortStochOK,
+    shortPriceBelowEMA,
+    volumeOk,
+  ];
+  const shortPassed = shortChecklist.filter(Boolean).length;
+  const shortReasons = [];
+  if (shortTrend) shortReasons.push("Trend↓");
+  if (shortTrendStrong) shortReasons.push("Strong↓");
+  if (shortBounce) shortReasons.push(`RSI${rsiVal.toFixed(0)}`);
+  if (shortMomentum) shortReasons.push("Mom↓");
+  if (shortResistance) shortReasons.push("BB high");
+  if (shortStochOK) shortReasons.push(`Stoch${stochVal.k.toFixed(0)}`);
+  if (shortPriceBelowEMA) shortReasons.push("BelowEMA");
+  if (volumeSpike) shortReasons.push("VolSpike");
+
+  const shortSignal = shortTrend && shortBounce && shortMomentum && (shortResistance || shortStochOK) && shortPriceBelowEMA && volumeOk;
+
+  // TP/SL based on ATR
   const tp = +(price + atrVal * 2.5).toFixed(4);
   const sl = +(price - atrVal * 1.5).toFixed(4);
   const shortTp = +(price - atrVal * 2.5).toFixed(4);
   const shortSl = +(price + atrVal * 1.5).toFixed(4);
 
-  return { longScore, shortScore, longReasons, shortReasons, atr: atrVal, tp, sl, shortTp, shortSl, price, volumeConfirm, atrExpanding, rsiRising, rsiFalling, volNow, volAvg, rsi: rsiVal, bbPct, stochK: stochVal.k };
+  // Confidence = how many checklist items passed (out of 7)
+  const longConfidence = Math.round((longPassed / 7) * 100);
+  const shortConfidence = Math.round((shortPassed / 7) * 100);
+
+  return {
+    longSignal, shortSignal,
+    longConfidence, shortConfidence,
+    longReasons, shortReasons,
+    longPassed, shortPassed,
+    atr: atrVal, tp, sl, shortTp, shortSl,
+    price, volumeConfirm: volumeOk, volumeSpike,
+    rsi: rsiVal, bbPct, stochK: stochVal.k,
+    ema20: ema20Val, ema50: ema50Val,
+  };
 }
 
 // ─── MULTI-TIMEFRAME TREND (weekly) ─────────────────────────
@@ -856,11 +866,11 @@ async function processAsset(sym) {
             if (posNow.side === "LONG") {
               if (currentPrice <= posNow.sl) { shouldExit = true; exitPrice = posNow.sl; exitReason = "SL"; }
               else if (currentPrice >= posNow.tp) { shouldExit = true; exitPrice = posNow.tp; exitReason = "TP"; }
-              else if (result.shortScore >= effectiveMinScore && holdMinutes >= 10) { shouldExit = true; exitReason = "REVERSE"; }
+              else if (result.shortSignal && holdMinutes >= 15) { shouldExit = true; exitReason = "REVERSE"; }
             } else {
               if (currentPrice >= posNow.sl) { shouldExit = true; exitPrice = posNow.sl; exitReason = "SL"; }
               else if (currentPrice <= posNow.tp) { shouldExit = true; exitPrice = posNow.tp; exitReason = "TP"; }
-              else if (result.longScore >= effectiveMinScore && holdMinutes >= 10) { shouldExit = true; exitReason = "REVERSE"; }
+              else if (result.longSignal && holdMinutes >= 15) { shouldExit = true; exitReason = "REVERSE"; }
             }
           }
         }
@@ -913,46 +923,25 @@ async function processAsset(sym) {
 
       // ── ADAPTIVE LIMITS ──
       const drawdown = st.peakBalance > 0 ? (st.peakBalance - totalEquity) / st.peakBalance : 0;
-      const tradingPaused = drawdown > 0.12;
-      const inDrawdown = drawdown > 0.07;
+      const tradingPaused = drawdown > 0.15;
 
       const atMax = getPositionCount() >= risk.maxPos;
-      const cryptoLimit = isCrypto && getCryptoCount() >= Math.max(2, Math.floor(risk.maxPos * 0.4));
-      const stockLimit = isStock && getStockCount() >= Math.max(2, Math.floor(risk.maxPos * 0.35));
-      const fastLimit = isFast && getStockFastCount() >= Math.max(1, Math.floor(risk.maxPos * 0.25));
+      const cryptoLimit = isCrypto && getCryptoCount() >= Math.max(5, Math.floor(risk.maxPos * 0.4));
+      const stockLimit = isStock && getStockCount() >= Math.max(5, Math.floor(risk.maxPos * 0.35));
+      const fastLimit = isFast && getStockFastCount() >= Math.max(3, Math.floor(risk.maxPos * 0.25));
       const marketClosed = (isStock || isFast || isCommodity || isIndex) && !isStockMarketOpen();
       const forexClosed = isForex && !isForexOpen();
-      const cooldownActive = liveState.lastExitTime[sym] && (Date.now() - liveState.lastExitTime[sym]) < 15 * 60 * 1000;
+      const cooldownActive = liveState.lastExitTime[sym] && (Date.now() - liveState.lastExitTime[sym]) < 10 * 60 * 1000;
 
       // ── CORRELATION FILTER ──
       const corrGroup = getCorrelationGroup(sym);
       const corrLimit = corrGroup ? getGroupCount(corrGroup) >= risk.maxPerGroup : false;
 
-      const minScore = inDrawdown ? risk.minScore + 1 : risk.minScore;
-
-      // ── VOLATILE ASSET: HIGHER MINSCORE (90% confidence required) ──
       const isVolatile = asset?.volatile === true;
-      const effectiveMinScore = isVolatile ? Math.max(minScore, 7) : minScore;
-
-      const volumeOk = result.volumeConfirm;
-
-      let rrOk = true;
-      if (result.longScore >= effectiveMinScore) {
-        const riskCalc = currentPrice - result.sl;
-        const reward = result.tp - currentPrice;
-        rrOk = riskCalc > 0 && (reward / riskCalc) >= risk.rr;
-      }
-      if (result.shortScore >= effectiveMinScore && rrOk) {
-        const riskCalc = result.shortSl - currentPrice;
-        const reward = currentPrice - result.shortTp;
-        rrOk = riskCalc > 0 && (reward / riskCalc) >= risk.rr;
-      }
-
-      // ── EQUITY CURVE MULTIPLIER ──
       const equityMult = getEquityMultiplier();
 
-      // Debug: log top scored assets
-      if (result.longScore >= 2 || result.shortScore >= 2) {
+      // Debug: log signals
+      if (result.longSignal || result.shortSignal) {
         const blocks = [];
         if (atMax) blocks.push("maxPos");
         if (cryptoLimit) blocks.push("cryptoLim");
@@ -963,18 +952,16 @@ async function processAsset(sym) {
         if (cooldownActive) blocks.push("cooldown");
         if (corrLimit) blocks.push("corr");
         if (tradingPaused) blocks.push("paused");
-        if (!volumeOk) blocks.push("vol");
-        if (!rrOk) blocks.push("rr");
-        if (result.longScore < minScore && result.shortScore < minScore) blocks.push(`score<${minScore}`);
-        if (isVolatile && result.longScore < 7 && result.shortScore < 7) blocks.push("volatile<7");
-        if (blocks.length > 0) console.log(`[BLOCKED] ${sym}: L=${result.longScore} S=${result.shortScore} → ${blocks.join(", ")}`);
+        if (!result.volumeConfirm) blocks.push("vol");
+        if (blocks.length > 0) console.log(`[BLOCKED] ${sym}: L=${result.longConfidence}% S=${result.shortConfidence}% → ${blocks.join(", ")}`);
+        else console.log(`[SIGNAL] ${sym}: L=${result.longSignal ? result.longConfidence + "%" : "—"} S=${result.shortSignal ? result.shortConfidence + "%" : "—"} ${result.longSignal ? result.longReasons.join(",") : ""}${result.shortSignal ? result.shortReasons.join(",") : ""}`);
       }
 
-      if (!pos && !atMax && !cryptoLimit && !stockLimit && !fastLimit && !marketClosed && !forexClosed && !cooldownActive && !corrLimit && !tradingPaused) {
-        if (result.longScore >= effectiveMinScore && volumeOk && rrOk && st.balance > 1) {
-          const confidence = Math.min(result.longScore, 10);
-          const baseRatio = risk.maxRiskPct * 0.6 + (confidence - effectiveMinScore) * risk.maxRiskPct * 0.08;
-          const spendRatio = Math.min(baseRatio, risk.maxRiskPct) * equityMult;
+      if (!pos && !atMax && !cryptoLimit && !stockLimit && !fastLimit && !marketClosed && !forexClosed && !cooldownActive && !corrLimit && !tradingPaused && st.balance > 1) {
+        // ── LONG ENTRY ──
+        if (result.longSignal) {
+          const confidence = result.longConfidence / 100;
+          const spendRatio = risk.maxRiskPct * confidence * equityMult;
           const spend = st.balance * spendRatio;
           const qty = +(spend / currentPrice).toFixed(8);
           const cost = qty * currentPrice;
@@ -993,12 +980,13 @@ async function processAsset(sym) {
           setBalance(st.balance - cost);
 
           const tag = isCrypto ? "₿" : isFast ? "⚡" : asset?.type === "forex" ? "💱" : asset?.type === "commodity" ? "🥇" : asset?.type === "index" ? "📈" : "📊";
-          const volatileTag = isVolatile ? "🔥" : "";
-          addNotification("info", `${tag}${volatileTag} LONG ${sym}`, `Acheté $${currentPrice.toFixed(2)} | Qty: ${qty} | TP: $${tpFinal} | SL: $${slFinal} | Score: ${result.longScore} | Risk: ${risk.name}${isVolatile ? " | ⚡VOLATILE" : ""}`);
-        } else if (result.shortScore >= effectiveMinScore && volumeOk && rrOk && st.balance > 1) {
-          const confidence = Math.min(result.shortScore, 10);
-          const baseRatio = risk.maxRiskPct * 0.6 + (confidence - effectiveMinScore) * risk.maxRiskPct * 0.08;
-          const spendRatio = Math.min(baseRatio, risk.maxRiskPct) * equityMult;
+          const volTag = isVolatile ? "🔥" : "";
+          addNotification("info", `${tag}${volTag} LONG ${sym}`, `Achat $${currentPrice.toFixed(2)} | TP: $${tpFinal} | SL: $${slFinal} | Confiance: ${result.longConfidence}% | ${result.longReasons.join(", ")}`);
+        }
+        // ── SHORT ENTRY ──
+        else if (result.shortSignal) {
+          const confidence = result.shortConfidence / 100;
+          const spendRatio = risk.maxRiskPct * confidence * equityMult;
           const spend = st.balance * spendRatio;
           const qty = +(spend / currentPrice).toFixed(8);
           const cost = qty * currentPrice;
@@ -1017,8 +1005,8 @@ async function processAsset(sym) {
           setBalance(st.balance - cost);
 
           const tag = isCrypto ? "₿" : isFast ? "⚡" : asset?.type === "forex" ? "💱" : asset?.type === "commodity" ? "🥇" : asset?.type === "index" ? "📈" : "📊";
-          const volatileTag = isVolatile ? "🔥" : "";
-          addNotification("info", `${tag}${volatileTag} SHORT ${sym}`, `Vendu $${currentPrice.toFixed(2)} | Qty: ${qty} | TP: $${shortTpFinal} | SL: $${shortSlFinal} | Score: ${result.shortScore} | Risk: ${risk.name}${isVolatile ? " | ⚡VOLATILE" : ""}`);
+          const volTag = isVolatile ? "🔥" : "";
+          addNotification("info", `${tag}${volTag} SHORT ${sym}`, `Vente $${currentPrice.toFixed(2)} | TP: $${shortTpFinal} | SL: $${shortSlFinal} | Confiance: ${result.shortConfidence}% | ${result.shortReasons.join(", ")}`);
         }
       }
     } catch (err) {
