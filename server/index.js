@@ -246,10 +246,10 @@ const rangeDays = { "1w": 7, "1mo": 30, "3mo": 90, "6mo": 180, "1y": 365, "2y": 
 // ═══════════════════════════════════════════════════════════════
 // LIVE TRADING ENGINE
 // ═══════════════════════════════════════════════════════════════
-const MAX_POSITIONS = 25;
-const MAX_CRYPTO = 8;
-const MAX_STOCKS = 3;
-const MAX_STOCK_FAST = 4;
+const MAX_POSITIONS = 30;
+const MAX_CRYPTO = 10;
+const MAX_STOCKS = 4;
+const MAX_STOCK_FAST = 5;
 const INITIAL_BALANCE = 10000;
 
 const liveState = {
@@ -625,8 +625,8 @@ async function liveTradeCheck() {
       const drawdown = (liveState.peakBalance - liveState.balance) / liveState.peakBalance;
       const tradingPaused = drawdown > 0.15;
       const inDrawdown = drawdown > 0.10;
-      const maxPos = inDrawdown ? Math.max(8, Math.floor(MAX_POSITIONS * 0.5)) : MAX_POSITIONS;
-      const maxCr = inDrawdown ? Math.max(3, Math.floor(MAX_CRYPTO * 0.5)) : MAX_CRYPTO;
+      const maxPos = inDrawdown ? Math.max(10, Math.floor(MAX_POSITIONS * 0.5)) : MAX_POSITIONS;
+      const maxCr = inDrawdown ? Math.max(4, Math.floor(MAX_CRYPTO * 0.5)) : MAX_CRYPTO;
 
       const atMax = getPositionCount() >= maxPos;
       const cryptoLimit = isCrypto && getCryptoCount() >= maxCr;
@@ -634,7 +634,7 @@ async function liveTradeCheck() {
       const fastLimit = isFast && getStockFastCount() >= MAX_STOCK_FAST;
       const marketClosed = (isStock || isFast || isCommodity || isIndex) && !isStockMarketOpen();
       const forexClosed = isForex && !isForexOpen();
-      const cooldownActive = liveState.lastExitTime[sym] && (Date.now() - liveState.lastExitTime[sym]) < 30 * 60 * 1000;
+      const cooldownActive = liveState.lastExitTime[sym] && (Date.now() - liveState.lastExitTime[sym]) < 15 * 60 * 1000;
 
       // ── CORRELATION FILTER ──
       const corrGroup = getCorrelationGroup(sym);
@@ -684,8 +684,8 @@ async function liveTradeCheck() {
       if (!pos && !atMax && !cryptoLimit && !stockLimit && !fastLimit && !marketClosed && !forexClosed && !cooldownActive && !corrLimit && !tradingPaused) {
         if (result.longScore >= minScore && volumeOk && rrOk && liveState.balance > 50) {
           const confidence = Math.min(result.longScore, 10);
-          const baseRatio = 0.04 + (confidence - minScore) * 0.02;
-          const spendRatio = Math.min(baseRatio, 0.15) * equityMult;
+          const baseRatio = 0.08 + (confidence - minScore) * 0.04;
+          const spendRatio = Math.min(baseRatio, 0.25) * equityMult;
           const spend = liveState.balance * spendRatio;
           const qty = +(spend / currentPrice).toFixed(8);
           const cost = qty * currentPrice;
@@ -707,8 +707,8 @@ async function liveTradeCheck() {
           addNotification("info", `${tag} LONG ${sym}`, `Acheté $${currentPrice.toFixed(2)} | Qty: ${qty} | TP: $${tpFinal} | SL: $${slFinal} | Score: ${result.longScore}`);
         } else if (result.shortScore >= minScore && volumeOk && rrOk && liveState.balance > 50) {
           const confidence = Math.min(result.shortScore, 10);
-          const baseRatio = 0.04 + (confidence - minScore) * 0.02;
-          const spendRatio = Math.min(baseRatio, 0.15) * equityMult;
+          const baseRatio = 0.08 + (confidence - minScore) * 0.04;
+          const spendRatio = Math.min(baseRatio, 0.25) * equityMult;
           const spend = liveState.balance * spendRatio;
           const qty = +(spend / currentPrice).toFixed(8);
           const cost = qty * currentPrice;
