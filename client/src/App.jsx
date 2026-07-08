@@ -578,7 +578,7 @@ function App() {
             {/* BIG BALANCE */}
             <motion.div className="bot-balance-card" initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }}>
               <div className="bot-balance-label">Balance</div>
-              <div className="bot-balance-amount">€{liveData?.balance?.toLocaleString() || "1000"}</div>
+              <div className="bot-balance-amount">€{liveData?.balance?.toLocaleString() || "40"}</div>
               <div className={`bot-balance-pnl ${(liveData?.totalPnL || 0) >= 0 ? "positive" : "negative"}`}>
                 {(liveData?.totalPnL || 0) >= 0 ? "+" : ""}€{(liveData?.totalPnL || 0).toFixed(2)} ({(liveData?.totalPnLPercent || 0).toFixed(1)}%)
               </div>

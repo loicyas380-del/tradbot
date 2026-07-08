@@ -402,7 +402,7 @@ const rangeDays = { "1w": 7, "1mo": 30, "3mo": 90, "6mo": 180, "1y": 365, "2y": 
 // ═══════════════════════════════════════════════════════════════
 // LIVE TRADING ENGINE
 // ═══════════════════════════════════════════════════════════════
-const INITIAL_VIRTUAL = 100;
+const INITIAL_VIRTUAL = 40;
 
 const liveState = {
   realBalance: 0,
@@ -482,11 +482,11 @@ function addPnL(pnl) {
 
 // ─── ADAPTIVE RISK SYSTEM ───
 function getRiskProfile(equity) {
-  if (equity <= 50) return { name: "micro", maxRiskPct: 0.04, minScore: 7, maxPos: 3, maxPerGroup: 1, rr: 2.0, maxHoldMin: 60 };
-  if (equity <= 200) return { name: "small", maxRiskPct: 0.06, minScore: 5, maxPos: 6, maxPerGroup: 1, rr: 1.5, maxHoldMin: 120 };
-  if (equity <= 500) return { name: "medium", maxRiskPct: 0.08, minScore: 4, maxPos: 8, maxPerGroup: 2, rr: 1.2, maxHoldMin: 240 };
-  if (equity <= 2000) return { name: "large", maxRiskPct: 0.10, minScore: 3, maxPos: 10, maxPerGroup: 2, rr: 1.0, maxHoldMin: 360 };
-  return { name: "big", maxRiskPct: 0.12, minScore: 3, maxPos: 12, maxPerGroup: 2, rr: 1.0, maxHoldMin: 480 };
+  if (equity <= 50) return { name: "micro", maxRiskPct: 0.05, minScore: 5, maxPos: 2, maxPerGroup: 1, rr: 1.5, maxHoldMin: 120 };
+  if (equity <= 200) return { name: "small", maxRiskPct: 0.06, minScore: 4, maxPos: 4, maxPerGroup: 1, rr: 1.5, maxHoldMin: 180 };
+  if (equity <= 500) return { name: "medium", maxRiskPct: 0.08, minScore: 4, maxPos: 6, maxPerGroup: 2, rr: 1.2, maxHoldMin: 240 };
+  if (equity <= 2000) return { name: "large", maxRiskPct: 0.10, minScore: 3, maxPos: 8, maxPerGroup: 2, rr: 1.0, maxHoldMin: 360 };
+  return { name: "big", maxRiskPct: 0.12, minScore: 3, maxPos: 10, maxPerGroup: 2, rr: 1.0, maxHoldMin: 480 };
 }
 
 // ── CORRELATION GROUPS (max 2 per group) ──
@@ -624,7 +624,7 @@ function analyzeDay(ana, i) {
   const uptrend = ema20Val > ema50Val && (sma200Val == null || price > sma200Val);
   const downtrend = ema20Val < ema50Val && (sma200Val == null || price < sma200Val);
   const bbPct = (price - bbVal.lower) / (bbVal.upper - bbVal.lower);
-  const volumeConfirm = volPrev && volAvg ? volPrev > volAvg * 0.5 : true;
+  const volumeConfirm = volPrev && volAvg ? volPrev > volAvg * 0.8 : true;
 
   // ── ATR EXPANSION (simple check) ──
   const atrExpanding = false;
@@ -679,9 +679,9 @@ function analyzeDay(ana, i) {
     shortScore += 3; shortReasons.push("Extreme overbought rejection");
   }
 
-  const tp = +(price + atrVal * 1.5).toFixed(4);
+  const tp = +(price + atrVal * 2.5).toFixed(4);
   const sl = +(price - atrVal * 1.5).toFixed(4);
-  const shortTp = +(price - atrVal * 1.5).toFixed(4);
+  const shortTp = +(price - atrVal * 2.5).toFixed(4);
   const shortSl = +(price + atrVal * 1.5).toFixed(4);
 
   return { longScore, shortScore, longReasons, shortReasons, atr: atrVal, tp, sl, shortTp, shortSl, price, volumeConfirm, atrExpanding, rsiRising, rsiFalling, volNow, volAvg, rsi: rsiVal, bbPct, stochK: stochVal.k };
@@ -949,8 +949,8 @@ async function processAsset(sym) {
           const cost = qty * currentPrice;
 
           let tpFinal, slFinal;
-          if (isFast) { tpFinal = +(currentPrice + atrVal * 1.5).toFixed(4); slFinal = +(currentPrice - atrVal * 1.0).toFixed(4); }
-          else if (isStock) { tpFinal = +(currentPrice + atrVal * 2).toFixed(4); slFinal = +(currentPrice - atrVal * 1.2).toFixed(4); }
+          if (isFast) { tpFinal = +(currentPrice + atrVal * 2.0).toFixed(4); slFinal = +(currentPrice - atrVal * 1.2).toFixed(4); }
+          else if (isStock) { tpFinal = +(currentPrice + atrVal * 2.5).toFixed(4); slFinal = +(currentPrice - atrVal * 1.5).toFixed(4); }
           else { tpFinal = result.tp; slFinal = result.sl; }
 
           st.positions[sym] = {
@@ -972,8 +972,8 @@ async function processAsset(sym) {
           const cost = qty * currentPrice;
 
           let shortTpFinal, shortSlFinal;
-          if (isFast) { shortTpFinal = +(currentPrice - atrVal * 1.5).toFixed(4); shortSlFinal = +(currentPrice + atrVal * 1.0).toFixed(4); }
-          else if (isStock) { shortTpFinal = +(currentPrice - atrVal * 2).toFixed(4); shortSlFinal = +(currentPrice + atrVal * 1.2).toFixed(4); }
+          if (isFast) { shortTpFinal = +(currentPrice - atrVal * 2.0).toFixed(4); shortSlFinal = +(currentPrice + atrVal * 1.2).toFixed(4); }
+          else if (isStock) { shortTpFinal = +(currentPrice - atrVal * 2.5).toFixed(4); shortSlFinal = +(currentPrice + atrVal * 1.5).toFixed(4); }
           else { shortTpFinal = result.shortTp; shortSlFinal = result.shortSl; }
 
           st.positions[sym] = {
