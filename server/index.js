@@ -562,13 +562,16 @@ function analyzeDay(ana, i) {
     longScore += 2; longReasons.push("Uptrend");
     if (rsiVal < 35) { longScore += 3; longReasons.push("RSI oversold"); }
     else if (rsiVal < 42) { longScore += 1; longReasons.push("RSI low"); }
+    if (rsiRising) { longScore += 1; longReasons.push("RSI rising"); }
     if (macdPrev && macdCurr) {
       if (macdPrev.MACD < macdPrev.signal && macdCurr.MACD > macdCurr.signal) { longScore += 3; longReasons.push("MACD cross up"); }
       else if (macdCurr.histogram > 0 && macdPrev.histogram <= 0) { longScore += 2; longReasons.push("MACD flip"); }
+      else if (macdCurr.histogram > macdPrev.histogram) { longScore += 1; longReasons.push("MACD rising"); }
     }
     if (bbPct < 0.15) { longScore += 2; longReasons.push("BB lower"); }
     else if (bbPct < 0.3) { longScore += 1; longReasons.push("BB low zone"); }
     if (stochVal.k < 25) { longScore += 1; longReasons.push("Stoch low"); }
+    if (price > ema20Val) { longScore += 1; longReasons.push("Above EMA20"); }
   }
 
   // SHORT
@@ -577,13 +580,16 @@ function analyzeDay(ana, i) {
     shortScore += 2; shortReasons.push("Downtrend");
     if (rsiVal > 65) { shortScore += 3; shortReasons.push("RSI overbought"); }
     else if (rsiVal > 58) { shortScore += 1; shortReasons.push("RSI high"); }
+    if (rsiFalling) { shortScore += 1; shortReasons.push("RSI falling"); }
     if (macdPrev && macdCurr) {
       if (macdPrev.MACD > macdPrev.signal && macdCurr.MACD < macdCurr.signal) { shortScore += 3; shortReasons.push("MACD cross down"); }
       else if (macdCurr.histogram < 0 && macdPrev.histogram >= 0) { shortScore += 2; shortReasons.push("MACD flip down"); }
+      else if (macdCurr.histogram < macdPrev.histogram) { shortScore += 1; shortReasons.push("MACD falling"); }
     }
     if (bbPct > 0.85) { shortScore += 2; shortReasons.push("BB upper"); }
     else if (bbPct > 0.7) { shortScore += 1; shortReasons.push("BB high zone"); }
     if (stochVal.k > 75) { shortScore += 1; shortReasons.push("Stoch high"); }
+    if (price < ema20Val) { shortScore += 1; shortReasons.push("Below EMA20"); }
   } else if (rsiVal > 75 && bbPct > 0.9) {
     shortScore += 4; shortReasons.push("Counter-trend overbought");
   }
@@ -600,7 +606,7 @@ function analyzeDay(ana, i) {
   const shortTp = +(price - atrVal * 1.5).toFixed(4);
   const shortSl = +(price + atrVal * 1.5).toFixed(4);
 
-  return { longScore, shortScore, longReasons, shortReasons, atr: atrVal, tp, sl, shortTp, shortSl, price, volumeConfirm, atrExpanding, rsiRising, rsiFalling };
+  return { longScore, shortScore, longReasons, shortReasons, atr: atrVal, tp, sl, shortTp, shortSl, price, volumeConfirm, atrExpanding, rsiRising, rsiFalling, volNow, volAvg, rsi: rsiVal, bbPct, stochK: stochVal.k };
 }
 
 // ─── MULTI-TIMEFRAME TREND (weekly) ─────────────────────────
@@ -1116,15 +1122,14 @@ app.get("/api/debug/:symbol", async (req, res) => {
     price: rawData[rawData.length - 1].close,
     dataLen: rawData.length,
     indicators: {
-      rsi: result?.rsi, macdHist: result?.macdHist,
-      ema20: result?.ema20, ema50: result?.ema50, sma200: result?.sma200,
-      atr: result?.atr, stochK: result?.stochK,
-      volNow: result?.volNow, volAvg: result?.volAvg,
+      atr: result?.atr,
     },
     longScore: result?.longScore, shortScore: result?.shortScore,
     tp: result?.tp, sl: result?.sl,
     shortTp: result?.shortTp, shortSl: result?.shortSl,
     volumeConfirm: result?.volumeConfirm,
+    volNow: result?.volNow, volAvg: result?.volAvg,
+    rsi: result?.rsi, bbPct: result?.bbPct, stochK: result?.stochK,
     longReasons: result?.longReasons, shortReasons: result?.shortReasons,
   });
 });
