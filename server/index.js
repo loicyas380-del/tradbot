@@ -231,7 +231,7 @@ const ASSETS = {
   "ARB":   { name: "Arbitrum",    base: 1.1,    vol: 0.045, type: "crypto" },
   "PYTH":  { name: "Pyth Network",base: 0.4,    vol: 0.06, type: "crypto" },
   "JUP":   { name: "Jupiter",     base: 0.8,    vol: 0.065, type: "crypto" },
-  "W":     { name: "Wormhole",    base: 0.5,    vol: 0.07, type: "crypto" },
+  "WORM":  { name: "Wormhole",     base: 0.5,    vol: 0.07, type: "crypto" },
   "THETA": { name: "Theta",       base: 2,      vol: 0.055, type: "crypto" },
   "ENJ":   { name: "Enjin",       base: 0.35,   vol: 0.06, type: "crypto" },
   "AXS":   { name: "Axie",        base: 7,      vol: 0.055, type: "crypto" },
@@ -546,12 +546,10 @@ function analyzeDay(ana, i) {
   const uptrend = ema20Val > ema50Val && (sma200Val == null || price > sma200Val);
   const downtrend = ema20Val < ema50Val && (sma200Val == null || price < sma200Val);
   const bbPct = (price - bbVal.lower) / (bbVal.upper - bbVal.lower);
-  const volumeConfirm = volNow && volAvg ? volNow > volAvg * 0.6 : true;
+  const volumeConfirm = volNow && volAvg ? volNow > volAvg * 0.5 : true;
 
-  // ── ATR EXPANSION FILTER ──
-  const atrArr = ATR.calculate({ high: highs, low: lows, close: closes, period: 14 });
-  const atrAvg = SMA.calculate({ values: atrArr, period: 20 });
-  const atrExpanding = atrVal > (atrAvg[atrAvg.length - 1] || atrVal) * 2.5;
+  // ── ATR EXPANSION (simple check) ──
+  const atrExpanding = false;
 
   // ── RSI MOMENTUM ──
   const rsiPrev = getVal(rsi, rI - 1);
@@ -640,24 +638,20 @@ function getEquityMultiplier() {
   return 1.0;
 }
 
-// ─── LIVE TRADE CHECK (runs every 10s) ──────────────────────
-async function liveTradeCheck() {
-  const symbols = Object.keys(ASSETS);
+// ─── LIVE TRADE CHECK (runs every 30s) ──────────────────────
+async function processAsset(sym) {
+  const asset = ASSETS[sym];
+  let rawData;
+  const yfSymbol = asset?.yfSym || (asset?.type === "crypto" ? sym + "-USD" : sym);
+  try { rawData = (await yfChartFast(yfSymbol, "3mo", "1d")).data; }
+  catch { return; }
+  if (!rawData || rawData.length < 50) return;
 
-  for (const sym of symbols) {
-    try {
-      const asset = ASSETS[sym];
-      let rawData;
-      const yfSymbol = asset?.yfSym || (asset?.type === "crypto" ? sym + "-USD" : sym);
-      try { rawData = (await yfChartFast(yfSymbol, "3mo", "1d")).data; }
-      catch { continue; }
-      if (!rawData || rawData.length < 50) continue;
-
-      const ana = computeIndicators(rawData);
-      const result = analyzeDay(ana, ana.len - 1);
-      const currentPrice = result ? result.price : rawData[rawData.length - 1].close;
-      liveState.currentPrices[sym] = currentPrice;
-      if (!result) continue;
+  const ana = computeIndicators(rawData);
+  const result = analyzeDay(ana, ana.len - 1);
+  const currentPrice = result ? result.price : rawData[rawData.length - 1].close;
+  liveState.currentPrices[sym] = currentPrice;
+  if (!result) return;
 
       const pos = liveState.positions[sym];
       const atrVal = result.atr;
@@ -759,7 +753,7 @@ async function liveTradeCheck() {
 
         if (shouldExit) {
           const posFinal = liveState.positions[sym];
-          if (!posFinal) continue;
+          if (!posFinal) return;
           let pnl, pct;
           if (posFinal.side === "LONG") {
             pnl = posFinal.qty * (exitPrice - posFinal.entryPrice);
@@ -861,13 +855,12 @@ async function liveTradeCheck() {
         if (tradingPaused) blocks.push("paused");
         if (!volumeOk) blocks.push("vol");
         if (!rrOk) blocks.push("rr");
-        if (result.atrExpanding) blocks.push("atrSpike");
         if (result.longScore < minScore && result.shortScore < minScore) blocks.push(`score<${minScore}`);
         if (blocks.length > 0) console.log(`[BLOCKED] ${sym}: L=${result.longScore} S=${result.shortScore} → ${blocks.join(", ")}`);
       }
 
       if (!pos && !atMax && !cryptoLimit && !stockLimit && !fastLimit && !marketClosed && !forexClosed && !cooldownActive && !corrLimit && !tradingPaused) {
-        if (result.longScore >= minScore && volumeOk && rrOk && !result.atrExpanding && liveState.balance > 50) {
+        if (result.longScore >= minScore && volumeOk && rrOk && liveState.balance > 50) {
           const confidence = Math.min(result.longScore, 10);
           const baseRatio = 0.08 + (confidence - minScore) * 0.04;
           const spendRatio = Math.min(baseRatio, 0.25) * equityMult;
@@ -890,7 +883,7 @@ async function liveTradeCheck() {
 
           const tag = isCrypto ? "₿" : isFast ? "⚡" : asset?.type === "forex" ? "💱" : asset?.type === "commodity" ? "🥇" : asset?.type === "index" ? "📈" : "📊";
           addNotification("info", `${tag} LONG ${sym}`, `Acheté $${currentPrice.toFixed(2)} | Qty: ${qty} | TP: $${tpFinal} | SL: $${slFinal} | Score: ${result.longScore}`);
-        } else if (result.shortScore >= minScore && volumeOk && rrOk && !result.atrExpanding && liveState.balance > 50) {
+        } else if (result.shortScore >= minScore && volumeOk && rrOk && liveState.balance > 50) {
           const confidence = Math.min(result.shortScore, 10);
           const baseRatio = 0.08 + (confidence - minScore) * 0.04;
           const spendRatio = Math.min(baseRatio, 0.25) * equityMult;
@@ -918,13 +911,26 @@ async function liveTradeCheck() {
     } catch (err) {
       console.log(`[SKIP] ${sym}: ${err.message}`);
     }
-  }
-  console.log(`[CYCLE] Pos: ${getPositionCount()}/${MAX_POSITIONS} | Bal: €${liveState.balance.toFixed(2)} | PnL: €${liveState.totalPnL.toFixed(2)} | WinRate: ${liveState.wins + liveState.losses > 0 ? ((liveState.wins / (liveState.wins + liveState.losses)) * 100).toFixed(0) : 0}% | EqMult: ${getEquityMultiplier().toFixed(2)}x`);
 }
 
-// Start live trading engine — check every 10 seconds
-setInterval(liveTradeCheck, 10000);
-setTimeout(liveTradeCheck, 3000); // first check after 3s
+// Process in parallel batches of 20
+let cycleRunning = false;
+async function liveTradeCheck() {
+  if (cycleRunning) return;
+  cycleRunning = true;
+  const symbols = Object.keys(ASSETS);
+  const BATCH = 20;
+  for (let i = 0; i < symbols.length; i += BATCH) {
+    const batch = symbols.slice(i, i + BATCH);
+    await Promise.allSettled(batch.map(sym => processAsset(sym)));
+  }
+  cycleRunning = false;
+  console.log(`[CYCLE] Pos: ${getPositionCount()}/${MAX_POSITIONS} | Bal: €${liveState.balance.toFixed(2)} | PnL: €${liveState.totalPnL.toFixed(2)} | WinRate: ${liveState.wins + liveState.losses > 0 ? ((liveState.wins / (liveState.wins + liveState.losses)) * 100).toFixed(0) : 0}%`);
+}
+
+// Start live trading engine — check every 30 seconds
+setInterval(liveTradeCheck, 30000);
+setTimeout(liveTradeCheck, 3000);
 
 // ═══════════════════════════════════════════════════════════════
 // ROUTES
