@@ -377,7 +377,7 @@ function analyzeDay(ana, i) {
   // ── ATR EXPANSION FILTER ──
   const atrArr = ATR.calculate({ high: highs, low: lows, close: closes, period: 14 });
   const atrAvg = SMA.calculate({ values: atrArr, period: 20 });
-  const atrExpanding = atrVal > (atrAvg[atrAvg.length - 1] || atrVal) * 2;
+  const atrExpanding = atrVal > (atrAvg[atrAvg.length - 1] || atrVal) * 2.5;
 
   // ── RSI MOMENTUM ──
   const rsiPrev = getVal(rsi, rI - 1);
@@ -487,9 +487,9 @@ async function liveTradeCheck() {
 
       // ── MULTI-TIMEFRAME: weekly trend filter ──
       const weeklyTrend = await getWeeklyTrend(yfSymbol);
-      const alignedWithWeekly = (result.longScore >= result.shortScore && weeklyTrend === "bullish") ||
-                                 (result.shortScore >= result.longScore && weeklyTrend === "bearish") ||
-                                 weeklyTrend === "neutral";
+      const alignedWithWeekly = weeklyTrend === "neutral" ||
+                                 (result.longScore >= result.shortScore && weeklyTrend === "bullish") ||
+                                 (result.shortScore >= result.longScore && weeklyTrend === "bearish");
 
       const pos = liveState.positions[sym];
       const atrVal = result.atr;
@@ -657,7 +657,7 @@ async function liveTradeCheck() {
       const corrLimit = corrGroup ? getGroupCount(corrGroup) >= 2 : false;
 
       // ── MIN SCORE BY TYPE ──
-      const baseMinScore = isCrypto ? 4 : 4;
+      const baseMinScore = isCrypto ? 3 : 3;
       const minScore = drawdown > 0.10 ? baseMinScore + 1 : baseMinScore;
 
       // ── VOLUME CONFIRMATION ──
@@ -695,14 +695,12 @@ async function liveTradeCheck() {
         if (!rrOk) blocks.push("rr");
         if (!alignedWithWeekly) blocks.push("weekly");
         if (result.atrExpanding) blocks.push("atrSpike");
-        if (!result.rsiRising && result.longScore >= result.shortScore) blocks.push("rsiNotRising");
-        if (!result.rsiFalling && result.shortScore >= result.longScore) blocks.push("rsiNotFalling");
         if (result.longScore < minScore && result.shortScore < minScore) blocks.push(`score<${minScore}`);
         if (blocks.length > 0) console.log(`[BLOCKED] ${sym}: L=${result.longScore} S=${result.shortScore} → ${blocks.join(", ")}`);
       }
 
       if (!pos && !atMax && !cryptoLimit && !stockLimit && !fastLimit && !marketClosed && !forexClosed && !cooldownActive && !corrLimit && !tradingPaused) {
-        if (result.longScore >= minScore && volumeOk && rrOk && alignedWithWeekly && !result.atrExpanding && result.rsiRising && liveState.balance > 50) {
+        if (result.longScore >= minScore && volumeOk && rrOk && alignedWithWeekly && !result.atrExpanding && liveState.balance > 50) {
           const confidence = Math.min(result.longScore, 10);
           const baseRatio = 0.08 + (confidence - minScore) * 0.04;
           const spendRatio = Math.min(baseRatio, 0.25) * equityMult;
@@ -725,7 +723,7 @@ async function liveTradeCheck() {
 
           const tag = isCrypto ? "₿" : isFast ? "⚡" : asset?.type === "forex" ? "💱" : asset?.type === "commodity" ? "🥇" : asset?.type === "index" ? "📈" : "📊";
           addNotification("info", `${tag} LONG ${sym}`, `Acheté $${currentPrice.toFixed(2)} | Qty: ${qty} | TP: $${tpFinal} | SL: $${slFinal} | Score: ${result.longScore}`);
-        } else if (result.shortScore >= minScore && volumeOk && rrOk && alignedWithWeekly && !result.atrExpanding && result.rsiFalling && liveState.balance > 50) {
+        } else if (result.shortScore >= minScore && volumeOk && rrOk && alignedWithWeekly && !result.atrExpanding && liveState.balance > 50) {
           const confidence = Math.min(result.shortScore, 10);
           const baseRatio = 0.08 + (confidence - minScore) * 0.04;
           const spendRatio = Math.min(baseRatio, 0.25) * equityMult;
