@@ -482,11 +482,11 @@ function addPnL(pnl) {
 
 // ─── ADAPTIVE RISK SYSTEM ───
 function getRiskProfile(equity) {
-  if (equity <= 50) return { name: "micro", maxRiskPct: 0.04, minScore: 5, maxPos: 4, maxPerGroup: 1, rr: 1.5, maxHoldMin: 120 };
-  if (equity <= 200) return { name: "small", maxRiskPct: 0.05, minScore: 4, maxPos: 6, maxPerGroup: 1, rr: 1.5, maxHoldMin: 180 };
-  if (equity <= 500) return { name: "medium", maxRiskPct: 0.07, minScore: 4, maxPos: 8, maxPerGroup: 2, rr: 1.2, maxHoldMin: 240 };
-  if (equity <= 2000) return { name: "large", maxRiskPct: 0.09, minScore: 3, maxPos: 10, maxPerGroup: 2, rr: 1.0, maxHoldMin: 360 };
-  return { name: "big", maxRiskPct: 0.12, minScore: 3, maxPos: 12, maxPerGroup: 2, rr: 1.0, maxHoldMin: 480 };
+  if (equity <= 50) return { name: "micro", maxRiskPct: 0.04, minScore: 5, maxPos: 15, maxPerGroup: 3, rr: 1.5, maxHoldMin: 120 };
+  if (equity <= 200) return { name: "small", maxRiskPct: 0.05, minScore: 4, maxPos: 20, maxPerGroup: 4, rr: 1.5, maxHoldMin: 180 };
+  if (equity <= 500) return { name: "medium", maxRiskPct: 0.07, minScore: 4, maxPos: 25, maxPerGroup: 5, rr: 1.2, maxHoldMin: 240 };
+  if (equity <= 2000) return { name: "large", maxRiskPct: 0.09, minScore: 3, maxPos: 30, maxPerGroup: 5, rr: 1.0, maxHoldMin: 360 };
+  return { name: "big", maxRiskPct: 0.12, minScore: 3, maxPos: 40, maxPerGroup: 6, rr: 1.0, maxHoldMin: 480 };
 }
 
 // ── CORRELATION GROUPS (max 2 per group) ──
@@ -932,7 +932,7 @@ async function processAsset(sym) {
 
       // ── VOLATILE ASSET: HIGHER MINSCORE (90% confidence required) ──
       const isVolatile = asset?.volatile === true;
-      const effectiveMinScore = isVolatile ? Math.max(minScore, 8) : minScore;
+      const effectiveMinScore = isVolatile ? Math.max(minScore, 7) : minScore;
 
       const volumeOk = result.volumeConfirm;
 
@@ -966,7 +966,7 @@ async function processAsset(sym) {
         if (!volumeOk) blocks.push("vol");
         if (!rrOk) blocks.push("rr");
         if (result.longScore < minScore && result.shortScore < minScore) blocks.push(`score<${minScore}`);
-        if (isVolatile && result.longScore < 8 && result.shortScore < 8) blocks.push("volatile<8");
+        if (isVolatile && result.longScore < 7 && result.shortScore < 7) blocks.push("volatile<7");
         if (blocks.length > 0) console.log(`[BLOCKED] ${sym}: L=${result.longScore} S=${result.shortScore} → ${blocks.join(", ")}`);
       }
 
