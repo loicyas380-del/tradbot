@@ -374,6 +374,16 @@ function analyzeDay(ana, i) {
   const bbPct = (price - bbVal.lower) / (bbVal.upper - bbVal.lower);
   const volumeConfirm = volNow && volAvg ? volNow > volAvg * 0.6 : true;
 
+  // ── ATR EXPANSION FILTER ──
+  const atrArr = ATR.calculate({ high: highs, low: lows, close: closes, period: 14 });
+  const atrAvg = SMA.calculate({ values: atrArr, period: 20 });
+  const atrExpanding = atrVal > (atrAvg[atrAvg.length - 1] || atrVal) * 2;
+
+  // ── RSI MOMENTUM ──
+  const rsiPrev = getVal(rsi, rI - 1);
+  const rsiRising = rsiPrev != null && rsiVal > rsiPrev;
+  const rsiFalling = rsiPrev != null && rsiVal < rsiPrev;
+
   // LONG
   let longScore = 0, longReasons = [];
   if (uptrend) {
@@ -418,7 +428,7 @@ function analyzeDay(ana, i) {
   const shortTp = +(price - atrVal * 1.5).toFixed(4);
   const shortSl = +(price + atrVal * 1.5).toFixed(4);
 
-  return { longScore, shortScore, longReasons, shortReasons, atr: atrVal, tp, sl, shortTp, shortSl, price, volumeConfirm };
+  return { longScore, shortScore, longReasons, shortReasons, atr: atrVal, tp, sl, shortTp, shortSl, price, volumeConfirm, atrExpanding, rsiRising, rsiFalling };
 }
 
 // ─── MULTI-TIMEFRAME TREND (weekly) ─────────────────────────
@@ -475,6 +485,12 @@ async function liveTradeCheck() {
       liveState.currentPrices[sym] = currentPrice;
       if (!result) continue;
 
+      // ── MULTI-TIMEFRAME: weekly trend filter ──
+      const weeklyTrend = await getWeeklyTrend(yfSymbol);
+      const alignedWithWeekly = (result.longScore >= result.shortScore && weeklyTrend === "bullish") ||
+                                 (result.shortScore >= result.longScore && weeklyTrend === "bearish") ||
+                                 weeklyTrend === "neutral";
+
       const pos = liveState.positions[sym];
       const atrVal = result.atr;
 
@@ -494,13 +510,13 @@ async function liveTradeCheck() {
           const bestPrice = pos.bestPrice || pos.entryPrice;
           if (currentPrice > bestPrice) { liveState.positions[sym].bestPrice = currentPrice; }
           const newBest = Math.max(bestPrice, currentPrice);
-          const trailDistance = atrVal * 1.5;
-          if (newBest > pos.entryPrice + atrVal * 0.75) {
+          const trailDistance = atrVal * 1;
+          if (newBest > pos.entryPrice + atrVal * 1) {
             const newTrailSl = +(newBest - trailDistance).toFixed(4);
             if (newTrailSl > pos.sl) { liveState.positions[sym].sl = newTrailSl; }
           }
-          // partial TP: sell 50% at 0.75× ATR profit
-          if (!pos.partialTaken && currentPrice >= pos.entryPrice + atrVal * 0.75) {
+          // partial TP: sell 50% at 1.5× ATR profit
+          if (!pos.partialTaken && currentPrice >= pos.entryPrice + atrVal * 1.5) {
             partialExit = true;
             const halfQty = +(pos.qty / 2).toFixed(8);
             const pnl = halfQty * (currentPrice - pos.entryPrice);
@@ -528,12 +544,12 @@ async function liveTradeCheck() {
           const bestPrice = pos.bestPrice || pos.entryPrice;
           if (currentPrice < bestPrice) { liveState.positions[sym].bestPrice = currentPrice; }
           const newBest = Math.min(bestPrice, currentPrice);
-          const trailDistance = atrVal * 1.5;
-          if (newBest < pos.entryPrice - atrVal * 0.75) {
+          const trailDistance = atrVal * 1;
+          if (newBest < pos.entryPrice - atrVal * 1) {
             const newTrailSl = +(newBest + trailDistance).toFixed(4);
             if (newTrailSl < pos.sl) { liveState.positions[sym].sl = newTrailSl; }
           }
-          if (!pos.partialTaken && currentPrice <= pos.entryPrice - atrVal * 0.75) {
+          if (!pos.partialTaken && currentPrice <= pos.entryPrice - atrVal * 1.5) {
             partialExit = true;
             const halfQty = +(pos.qty / 2).toFixed(8);
             const pnl = halfQty * (pos.entryPrice - currentPrice);
@@ -641,7 +657,7 @@ async function liveTradeCheck() {
       const corrLimit = corrGroup ? getGroupCount(corrGroup) >= 2 : false;
 
       // ── MIN SCORE BY TYPE ──
-      const baseMinScore = isCrypto ? 3 : 3;
+      const baseMinScore = isCrypto ? 4 : 4;
       const minScore = drawdown > 0.10 ? baseMinScore + 1 : baseMinScore;
 
       // ── VOLUME CONFIRMATION ──
@@ -677,12 +693,16 @@ async function liveTradeCheck() {
         if (tradingPaused) blocks.push("paused");
         if (!volumeOk) blocks.push("vol");
         if (!rrOk) blocks.push("rr");
+        if (!alignedWithWeekly) blocks.push("weekly");
+        if (result.atrExpanding) blocks.push("atrSpike");
+        if (!result.rsiRising && result.longScore >= result.shortScore) blocks.push("rsiNotRising");
+        if (!result.rsiFalling && result.shortScore >= result.longScore) blocks.push("rsiNotFalling");
         if (result.longScore < minScore && result.shortScore < minScore) blocks.push(`score<${minScore}`);
         if (blocks.length > 0) console.log(`[BLOCKED] ${sym}: L=${result.longScore} S=${result.shortScore} → ${blocks.join(", ")}`);
       }
 
       if (!pos && !atMax && !cryptoLimit && !stockLimit && !fastLimit && !marketClosed && !forexClosed && !cooldownActive && !corrLimit && !tradingPaused) {
-        if (result.longScore >= minScore && volumeOk && rrOk && liveState.balance > 50) {
+        if (result.longScore >= minScore && volumeOk && rrOk && alignedWithWeekly && !result.atrExpanding && result.rsiRising && liveState.balance > 50) {
           const confidence = Math.min(result.longScore, 10);
           const baseRatio = 0.08 + (confidence - minScore) * 0.04;
           const spendRatio = Math.min(baseRatio, 0.25) * equityMult;
@@ -705,7 +725,7 @@ async function liveTradeCheck() {
 
           const tag = isCrypto ? "₿" : isFast ? "⚡" : asset?.type === "forex" ? "💱" : asset?.type === "commodity" ? "🥇" : asset?.type === "index" ? "📈" : "📊";
           addNotification("info", `${tag} LONG ${sym}`, `Acheté $${currentPrice.toFixed(2)} | Qty: ${qty} | TP: $${tpFinal} | SL: $${slFinal} | Score: ${result.longScore}`);
-        } else if (result.shortScore >= minScore && volumeOk && rrOk && liveState.balance > 50) {
+        } else if (result.shortScore >= minScore && volumeOk && rrOk && alignedWithWeekly && !result.atrExpanding && result.rsiFalling && liveState.balance > 50) {
           const confidence = Math.min(result.shortScore, 10);
           const baseRatio = 0.08 + (confidence - minScore) * 0.04;
           const spendRatio = Math.min(baseRatio, 0.25) * equityMult;
