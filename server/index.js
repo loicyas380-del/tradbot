@@ -223,6 +223,170 @@ const ASSETS = {
   "FTSE":   { name: "FTSE 100",   base: 8200,  vol: 0.008, type: "index", yfSym: "^FTSE" },
   "DAX":    { name: "DAX",        base: 18500, vol: 0.009, type: "index", yfSym: "^GDAXI" },
   "NIKKEI": { name: "Nikkei 225", base: 39500, vol: 0.01,  type: "index", yfSym: "^N225" },
+  // ── CRYPTO SUPPLEMENTAIRES ──
+  "BONK":  { name: "Bonk",        base: 0.00002, vol: 0.08, type: "crypto" },
+  "FLOKI": { name: "Floki",       base: 0.00018, vol: 0.07, type: "crypto" },
+  "TURBO": { name: "Turbo",       base: 0.005,  vol: 0.09, type: "crypto" },
+  "BRETT": { name: "Brett",       base: 0.15,   vol: 0.08, type: "crypto" },
+  "ARB":   { name: "Arbitrum",    base: 1.1,    vol: 0.045, type: "crypto" },
+  "PYTH":  { name: "Pyth Network",base: 0.4,    vol: 0.06, type: "crypto" },
+  "JUP":   { name: "Jupiter",     base: 0.8,    vol: 0.065, type: "crypto" },
+  "W":     { name: "Wormhole",    base: 0.5,    vol: 0.07, type: "crypto" },
+  "THETA": { name: "Theta",       base: 2,      vol: 0.055, type: "crypto" },
+  "ENJ":   { name: "Enjin",       base: 0.35,   vol: 0.06, type: "crypto" },
+  "AXS":   { name: "Axie",        base: 7,      vol: 0.055, type: "crypto" },
+  "CHZ":   { name: "Chiliz",      base: 0.12,   vol: 0.06, type: "crypto" },
+  "BAT":   { name: "Basic Attention", base: 0.2, vol: 0.055, type: "crypto" },
+  "COMP":  { name: "Compound",    base: 55,     vol: 0.045, type: "crypto" },
+  "EOS":   { name: "EOS",         base: 0.7,    vol: 0.045, type: "crypto" },
+  "XLM":   { name: "Stellar",     base: 0.12,   vol: 0.045, type: "crypto" },
+  "XMR":   { name: "Monero",      base: 165,    vol: 0.035, type: "crypto" },
+  "DASH":  { name: "Dash",        base: 28,     vol: 0.045, type: "crypto" },
+  "LDO":   { name: "Lido",        base: 2,      vol: 0.055, type: "crypto" },
+  "RPL":   { name: "Rocket Pool", base: 22,     vol: 0.055, type: "crypto" },
+  "WIF":   { name: "dogwifhat",   base: 2,      vol: 0.09, type: "crypto" },
+  "NEIRO": { name: "Neiro",       base: 0.0002, vol: 0.10, type: "crypto" },
+  "STX":   { name: "Stacks",      base: 2,      vol: 0.055, type: "crypto" },
+  "RUNE":  { name: "THORChain",   base: 5,      vol: 0.055, type: "crypto" },
+  "KAVA":  { name: "Kava",        base: 0.7,    vol: 0.05, type: "crypto" },
+  "ALGO":  { name: "Algorand",    base: 0.18,   vol: 0.05, type: "crypto" },
+  "VET":   { name: "VeChain",     base: 0.035,  vol: 0.05, type: "crypto" },
+  "FTM":   { name: "Fantom",      base: 0.4,    vol: 0.06, type: "crypto" },
+  "SAND":  { name: "Sandbox",     base: 0.5,    vol: 0.05,  type: "crypto" },
+  "IMX":   { name: "Immutable",   base: 1.5,    vol: 0.06, type: "crypto" },
+  "BLUR":  { name: "Blur",        base: 0.3,    vol: 0.07, type: "crypto" },
+  "ZRO":   { name: "LayerZero",   base: 4,      vol: 0.065, type: "crypto" },
+  "STRK":  { name: "Starknet",    base: 0.6,    vol: 0.065, type: "crypto" },
+  "SAGA":  { name: "Saga",        base: 1.5,    vol: 0.07, type: "crypto" },
+  "WLD":   { name: "Worldcoin",   base: 2,      vol: 0.07, type: "crypto" },
+  "TAO":   { name: "Bittensor",   base: 300,    vol: 0.06, type: "crypto" },
+  "AKT":   { name: "Akash",       base: 3.5,    vol: 0.065, type: "crypto" },
+  "OCEAN": { name: "Ocean",       base: 0.6,    vol: 0.06, type: "crypto" },
+  "GRT":   { name: "Graph",       base: 0.25,   vol: 0.055, type: "crypto" },
+  // ── LEVERAGED ETF (x3 volatilité) ──
+  "TQQQ":  { name: "Nasdaq 3x",    base: 50,   vol: 0.035, type: "stock_fast", maxHold: 120, yfSym: "TQQQ" },
+  "SQQQ":  { name: "Nasdaq -3x",   base: 25,   vol: 0.04,  type: "stock_fast", maxHold: 120, yfSym: "SQQQ" },
+  "SOXL":  { name: "Semi 3x",      base: 25,   vol: 0.05,  type: "stock_fast", maxHold: 120, yfSym: "SOXL" },
+  "SOXS":  { name: "Semi -3x",     base: 15,   vol: 0.055, type: "stock_fast", maxHold: 120, yfSym: "SOXS" },
+  "FAS":   { name: "Finance 3x",   base: 40,   vol: 0.04,  type: "stock_fast", maxHold: 120, yfSym: "FAS" },
+  "FAZ":   { name: "Finance -3x",  base: 20,   vol: 0.045, type: "stock_fast", maxHold: 120, yfSym: "FAZ" },
+  "TECL":  { name: "Tech 3x",      base: 30,   vol: 0.045, type: "stock_fast", maxHold: 120, yfSym: "TECL" },
+  "TECS":  { name: "Tech -3x",     base: 10,   vol: 0.05,  type: "stock_fast", maxHold: 120, yfSym: "TECS" },
+  "LABU":  { name: "Biotech 3x",   base: 8,    vol: 0.06,  type: "stock_fast", maxHold: 90, yfSym: "LABU" },
+  "LABD":  { name: "Biotech -3x",  base: 15,   vol: 0.065, type: "stock_fast", maxHold: 90, yfSym: "LABD" },
+  "TNA":   { name: "Russell 3x",   base: 40,   vol: 0.05,  type: "stock_fast", maxHold: 120, yfSym: "TNA" },
+  "TZA":   { name: "Russell -3x",  base: 20,   vol: 0.055, type: "stock_fast", maxHold: 120, yfSym: "TZA" },
+  "SPXL":  { name: "S&P 3x",       base: 90,   vol: 0.035, type: "stock_fast", maxHold: 120, yfSym: "SPXL" },
+  "SPXS":  { name: "S&P -3x",      base: 15,   vol: 0.04,  type: "stock_fast", maxHold: 120, yfSym: "SPXS" },
+  "NVDL":  { name: "NVDA 2x",      base: 50,   vol: 0.055, type: "stock_fast", maxHold: 90, yfSym: "NVDL" },
+  "NVDS":  { name: "NVDA -2x",     base: 20,   vol: 0.06,  type: "stock_fast", maxHold: 90, yfSym: "NVDS" },
+  "CONL":  { name: "COIN 2x",      base: 30,   vol: 0.07,  type: "stock_fast", maxHold: 90, yfSym: "CONL" },
+  "FNGU":  { name: "FANG 3x",      base: 30,   vol: 0.05,  type: "stock_fast", maxHold: 90, yfSym: "FNGU" },
+  // ── ACTIONS SUPPLEMENTAIRES ──
+  "BABA":  { name: "Alibaba",     base: 85,    vol: 0.03,  type: "stock" },
+  "JD":    { name: "JD.com",      base: 28,    vol: 0.035, type: "stock" },
+  "PDD":   { name: "PDD Holdings",base: 130,   vol: 0.04,  type: "stock" },
+  "XPEV":  { name: "XPeng",       base: 10,    vol: 0.05,  type: "stock" },
+  "LI":    { name: "Li Auto",     base: 30,    vol: 0.045, type: "stock" },
+  "MRNA":  { name: "Moderna",     base: 110,   vol: 0.035, type: "stock" },
+  "GILD":  { name: "Gilead",      base: 80,    vol: 0.018, type: "stock" },
+  "VRTX":  { name: "Vertex",      base: 420,   vol: 0.022, type: "stock" },
+  "SE":    { name: "Sea Limited", base: 75,    vol: 0.04,  type: "stock" },
+  "MELI":  { name: "MercadoLibre",base: 1800,  vol: 0.025, type: "stock" },
+  "GRAB":  { name: "Grab",        base: 4.5,   vol: 0.035, type: "stock" },
+  "WBD":   { name: "Warner Bros", base: 8,     vol: 0.04,  type: "stock" },
+  "F":     { name: "Ford",        base: 12,    vol: 0.025, type: "stock" },
+  "GM":    { name: "GM",          base: 45,    vol: 0.025, type: "stock" },
+  "CCL":   { name: "Carnival",    base: 18,    vol: 0.035, type: "stock" },
+  "AAL":   { name: "American Air",base: 14,    vol: 0.04,  type: "stock" },
+  "TTD":   { name: "Trade Desk",  base: 90,    vol: 0.035, type: "stock" },
+  "DDOG":  { name: "Datadog",     base: 120,   vol: 0.03,  type: "stock" },
+  "HUBS":  { name: "HubSpot",     base: 600,   vol: 0.028, type: "stock" },
+  "OKTA":  { name: "Okta",        base: 80,    vol: 0.035, type: "stock" },
+  "DOCU":  { name: "DocuSign",    base: 60,    vol: 0.035, type: "stock" },
+  "ROST":  { name: "Ross Stores", base: 140,   vol: 0.02,  type: "stock" },
+  "LULU":  { name: "Lululemon",   base: 300,   vol: 0.028, type: "stock" },
+  "BBY":   { name: "Best Buy",    base: 75,    vol: 0.025, type: "stock" },
+  "WMT":   { name: "Walmart",     base: 170,   vol: 0.012, type: "stock" },
+  "GS":    { name: "Goldman Sachs",base: 450,  vol: 0.02,  type: "stock" },
+  "JPM":   { name: "JPMorgan",    base: 200,   vol: 0.015, type: "stock" },
+  "V":     { name: "Visa",        base: 280,   vol: 0.012, type: "stock" },
+  "MA":    { name: "Mastercard",  base: 460,   vol: 0.013, type: "stock" },
+  "DIS":   { name: "Disney",      base: 110,   vol: 0.018, type: "stock" },
+  "CMG":   { name: "Chipotle",    base: 55,    vol: 0.03,  type: "stock" },
+  "SBUX":  { name: "Starbucks",   base: 80,    vol: 0.02,  type: "stock" },
+  "NKE":   { name: "Nike",        base: 75,    vol: 0.02,  type: "stock" },
+  "TGT":   { name: "Target",      base: 145,   vol: 0.025, type: "stock" },
+  "COST":  { name: "Costco",      base: 850,   vol: 0.015, type: "stock" },
+  "PG":    { name: "P&G",         base: 165,   vol: 0.01,  type: "stock" },
+  "KO":    { name: "Coca-Cola",   base: 62,    vol: 0.01,  type: "stock" },
+  "PEP":   { name: "PepsiCo",     base: 175,   vol: 0.01,  type: "stock" },
+  "MO":    { name: "Altria",      base: 45,    vol: 0.015, type: "stock" },
+  "CVX":   { name: "Chevron",     base: 155,   vol: 0.015, type: "stock" },
+  "XOM":   { name: "ExxonMobil",  base: 110,   vol: 0.018, type: "stock" },
+  "T":     { name: "AT&T",        base: 18,    vol: 0.015, type: "stock" },
+  "VZ":    { name: "Verizon",     base: 41,    vol: 0.012, type: "stock" },
+  "PFE":   { name: "Pfizer",      base: 28,    vol: 0.02,  type: "stock" },
+  "ABBV":  { name: "AbbVie",      base: 170,   vol: 0.018, type: "stock" },
+  "LLY":   { name: "Eli Lilly",   base: 800,   vol: 0.022, type: "stock" },
+  "UNH":   { name: "UnitedHealth", base: 520,  vol: 0.018, type: "stock" },
+  "NOW":   { name: "ServiceNow",  base: 780,   vol: 0.025, type: "stock" },
+  "TEAM":  { name: "Atlassian",   base: 200,   vol: 0.03,  type: "stock" },
+  "WDAY":  { name: "Workday",     base: 220,   vol: 0.025, type: "stock" },
+  "VEEV":  { name: "Veeva",       base: 200,   vol: 0.025, type: "stock" },
+  "ANET":  { name: "Arista",      base: 300,   vol: 0.028, type: "stock" },
+  "DELL":  { name: "Dell",        base: 130,   vol: 0.03,  type: "stock" },
+  "HPE":   { name: "HPE",         base: 20,    vol: 0.025, type: "stock" },
+  "IBM":   { name: "IBM",         base: 190,   vol: 0.018, type: "stock" },
+  "ORCL":  { name: "Oracle",      base: 140,   vol: 0.02,  type: "stock" },
+  "SAP":   { name: "SAP",         base: 200,   vol: 0.018, type: "stock" },
+  "QCOM":  { name: "Qualcomm",    base: 170,   vol: 0.025, type: "stock" },
+  "AVGO":  { name: "Broadcom",    base: 1600,  vol: 0.025, type: "stock" },
+  "TXN":   { name: "Texas Instr.", base: 170,   vol: 0.018, type: "stock" },
+  "MU":    { name: "Micron",      base: 130,   vol: 0.032, type: "stock" },
+  "LRCX":  { name: "Lam Research",base: 800,   vol: 0.025, type: "stock" },
+  "AMAT":  { name: "Applied Mat.", base: 200,   vol: 0.025, type: "stock" },
+  "KLAC":  { name: "KLA Corp",    base: 700,   vol: 0.025, type: "stock" },
+  "SNPS":  { name: "Synopsys",    base: 550,   vol: 0.022, type: "stock" },
+  "CDNS":  { name: "Cadence",     base: 300,   vol: 0.025, type: "stock" },
+  "PANW":  { name: "Palo Alto",   base: 340,   vol: 0.022, type: "stock" },
+  "FTNT":  { name: "Fortinet",    base: 80,    vol: 0.028, type: "stock" },
+  "CYBR":  { name: "CyberArk",    base: 300,   vol: 0.03,  type: "stock" },
+  // ── FOREX SUPPLEMENTAIRES ──
+  "USDSEK": { name: "USD/SEK",    base: 10.5,  vol: 0.006, type: "forex", yfSym: "USDSEK=X" },
+  "USDNOK": { name: "USD/NOK",    base: 10.8,  vol: 0.007, type: "forex", yfSym: "USDNOK=X" },
+  "USDTRY": { name: "USD/TRY",    base: 33,    vol: 0.01,  type: "forex", yfSym: "USDTRY=X" },
+  "USDMXN": { name: "USD/MXN",    base: 17,    vol: 0.008, type: "forex", yfSym: "USDMXN=X" },
+  "USDZAR": { name: "USD/ZAR",    base: 18.5,  vol: 0.01,  type: "forex", yfSym: "USDZAR=X" },
+  "USDCNH": { name: "USD/CNH",    base: 7.25,  vol: 0.005, type: "forex", yfSym: "USDCNH=X" },
+  "USDINR": { name: "USD/INR",    base: 83.5,  vol: 0.004, type: "forex", yfSym: "USDINR=X" },
+  "USDPLN": { name: "USD/PLN",    base: 4.0,   vol: 0.006, type: "forex", yfSym: "USDPLN=X" },
+  "EURAUD": { name: "EUR/AUD",    base: 1.65,  vol: 0.006, type: "forex", yfSym: "EURAUD=X" },
+  "EURCHF": { name: "EUR/CHF",    base: 0.97,  vol: 0.004, type: "forex", yfSym: "EURCHF=X" },
+  "EURNZD": { name: "EUR/NZD",    base: 1.80,  vol: 0.007, type: "forex", yfSym: "EURNZD=X" },
+  "GBPAUD": { name: "GBP/AUD",    base: 1.93,  vol: 0.007, type: "forex", yfSym: "GBPAUD=X" },
+  "GBPCAD": { name: "GBP/CAD",    base: 1.74,  vol: 0.006, type: "forex", yfSym: "GBPCAD=X" },
+  "AUDJPY": { name: "AUD/JPY",    base: 105,   vol: 0.007, type: "forex", yfSym: "AUDJPY=X" },
+  "CADJPY": { name: "CAD/JPY",    base: 118,   vol: 0.007, type: "forex", yfSym: "CADJPY=X" },
+  // ── MATIERES PREMIERES SUPPLEMENTAIRES ──
+  "WHEAT":  { name: "Ble",        base: 550,   vol: 0.025, type: "commodity", yfSym: "ZW=F" },
+  "CORN":   { name: "Maïs",       base: 450,   vol: 0.022, type: "commodity", yfSym: "ZC=F" },
+  "SOYBEAN":{ name: "Soja",       base: 1200,  vol: 0.02,  type: "commodity", yfSym: "ZS=F" },
+  "COCOA":  { name: "Cacao",      base: 8000,  vol: 0.04,  type: "commodity", yfSym: "CC=F" },
+  "SUGAR":  { name: "Sucre",      base: 20,    vol: 0.025, type: "commodity", yfSym: "SB=F" },
+  "LUMBER": { name: "Bois",       base: 500,   vol: 0.04,  type: "commodity", yfSym: "LBS=F" },
+  "PALADIUM":{ name: "Palladium", base: 950,   vol: 0.03,  type: "commodity", yfSym: "PA=F" },
+  // ── INDICES SUPPLEMENTAIRES ──
+  "STOXX":  { name: "Euro Stoxx",  base: 4900,  vol: 0.01,  type: "index", yfSym: "^STOXX50E" },
+  "ASX":    { name: "ASX 200",     base: 7800,  vol: 0.008, type: "index", yfSym: "^AORD" },
+  "TSX":    { name: "TSX Canada",  base: 22000, vol: 0.008, type: "index", yfSym: "^GSPTSE" },
+  "KOSPI":  { name: "Kospi",       base: 2700,  vol: 0.012, type: "index", yfSym: "^KS11" },
+  "SENSEX": { name: "Sensex India", base: 75000, vol: 0.01, type: "index", yfSym: "^BSESENSE" },
+  "HANG":   { name: "Hang Seng",   base: 18000, vol: 0.014, type: "index", yfSym: "^HSI" },
+  "CAC":    { name: "CAC 40",      base: 7600,  vol: 0.01,  type: "index", yfSym: "^FCHI" },
+  "IBEX":   { name: "IBEX 35",     base: 11000, vol: 0.012, type: "index", yfSym: "^IBEX" },
+  "SMI":    { name: "SMI Swiss",   base: 12000, vol: 0.008, type: "index", yfSym: "^SSMI" },
+  "AALL":   { name: "All Ordin.",  base: 8200,  vol: 0.008, type: "index", yfSym: "^AORD" },
 };
 
 function isStockMarketOpen() {
@@ -246,10 +410,10 @@ const rangeDays = { "1w": 7, "1mo": 30, "3mo": 90, "6mo": 180, "1y": 365, "2y": 
 // ═══════════════════════════════════════════════════════════════
 // LIVE TRADING ENGINE
 // ═══════════════════════════════════════════════════════════════
-const MAX_POSITIONS = 30;
-const MAX_CRYPTO = 10;
-const MAX_STOCKS = 4;
-const MAX_STOCK_FAST = 5;
+const MAX_POSITIONS = 40;
+const MAX_CRYPTO = 15;
+const MAX_STOCKS = 8;
+const MAX_STOCK_FAST = 10;
 const INITIAL_BALANCE = 10000;
 
 const liveState = {
@@ -268,21 +432,31 @@ const liveState = {
 
 // ── CORRELATION GROUPS (max 2 per group) ──
 const CORR_GROUPS = {
-  BTC_ECO: ["BTC", "MSTR", "MARA", "RIOT", "BCH", "ETC"],
-  ETH_ECO: ["ETH", "UNI", "AAVE", "MKR", "LINK", "OP", "ARB"],
-  L1_ALTS: ["SOL", "AVAX", "ADA", "DOT", "ATOM", "NEAR", "APT", "SUI", "SEI", "INJ", "TIA", "FIL"],
-  MEME: ["DOGE", "SHIB", "PEPE", "GALA", "SAND", "MANA", "CRV"],
-  RENDER_AI: ["RENDER", "FET", "ICP", "HBAR", "TRX"],
-  US_TECH: ["AAPL", "MSFT", "GOOGL", "AMZN", "META", "NVDA", "AMD"],
-  US_GROWTH: ["TSLA", "NFLX", "CRM", "PANW", "SNOW", "ZS", "MDB", "PLTR", "CRWD", "NET"],
-  US_CONSUMER: ["DIS", "UBER", "SHOP", "COIN", "SQ", "ABNB", "SPOT", "DKNG"],
-  US_SPECUL: ["GME", "AMC", "SOFI", "HOOD", "CVNA", "PLUG", "BYND", "U", "NIO", "LCID", "W", "RIVN", "SNAP", "ZM", "TOST", "BILL", "UPST", "INTC", "BA", "PYPL", "AI", "RBLX", "DASH", "ARM", "IONQ", "SMCI", "ROKU"],
+  BTC_ECO: ["BTC", "MSTR", "MARA", "RIOT", "BCH", "ETC", "STX", "RUNE"],
+  ETH_ECO: ["ETH", "UNI", "AAVE", "MKR", "LINK", "OP", "ARB", "LDO", "RPL", "COMP"],
+  L1_ALTS: ["SOL", "AVAX", "ADA", "DOT", "ATOM", "NEAR", "APT", "SUI", "SEI", "INJ", "TIA", "FIL", "KAVA", "ALGO", "FTM", "EOS", "XLM"],
+  MEME: ["DOGE", "SHIB", "PEPE", "GALA", "SAND", "MANA", "CRV", "BONK", "FLOKI", "TURBO", "BRETT", "WIF", "NEIRO", "CHZ", "ENJ", "AXS", "IMX", "BLUR"],
+  AI_DEPIN: ["RENDER", "FET", "ICP", "HBAR", "TRX", "TAO", "AKT", "OCEAN", "GRT", "WLD", "THETA", "BAT"],
+  LEVERAGED: ["TQQQ", "SQQQ", "SOXL", "SOXS", "FAS", "FAZ", "TECL", "TECS", "LABU", "LABD", "TNA", "TZA", "SPXL", "SPXS", "NVDL", "NVDS", "CONL", "FNGU"],
+  US_TECH: ["AAPL", "MSFT", "GOOGL", "AMZN", "META", "NVDA", "AMD", "AVGO", "QCOM", "TXN", "MU", "LRCX", "AMAT", "KLAC", "SNPS", "CDNS", "ANET", "DELL", "IBM", "ORCL", "NOW", "TEAM", "DDOG", "HUBS", "OKTA"],
+  US_GROWTH: ["TSLA", "NFLX", "CRM", "PANW", "SNOW", "ZS", "MDB", "PLTR", "CRWD", "NET", "FTNT", "CYBR", "TTD", "WDAY", "VEEV", "DOCU", "SE", "GRAB"],
+  US_CONSUMER: ["DIS", "UBER", "SHOP", "COIN", "SQ", "ABNB", "SPOT", "DKNG", "CCL", "AAL", "CMG", "SBUX", "NKE", "TGT", "COST", "WMT", "BBY", "ROST", "LULU"],
+  US_FINANCE: ["GS", "JPM", "V", "MA", "PYPL", "COIN", "HOOD", "SOFI"],
+  US_PHARMA: ["PFE", "ABBV", "LLY", "UNH", "GILD", "VRTX", "MRNA"],
+  US_ENERGY: ["CVX", "XOM"],
+  US_TELECOM: ["T", "VZ"],
+  US_AUTO: ["F", "GM", "TSLA", "NIO", "RIVN", "LCID", "XPEV", "LI"],
+  US_SPECUL: ["GME", "AMC", "CVNA", "PLUG", "BYND", "U", "IONQ", "SMCI", "ROKU", "ARM", "UPST", "W", "RBLX", "DASH", "SNAP", "ZM", "TOST", "BILL", "AI", "INTC", "BA", "WBD"],
+  CHINA: ["BABA", "JD", "PDD", "XPEV", "LI", "NIO"],
   FOREX_MAJOR: ["EURUSD", "GBPUSD", "AUDUSD", "NZDUSD"],
-  FOREX_CROSS: ["EURGBP", "EURJPY", "GBPJPY"],
-  US_INDICES: ["SPX", "NDX", "DJI", "RUT"],
-  EU_INDICES: ["FTSE", "DAX"],
-  COMMODITY_METALS: ["GOLD", "SILVER", "COPPER", "PLAT"],
-  COMMODITY_ENERGY: ["OIL", "GAS"],
+  FOREX_CROSS: ["EURGBP", "EURJPY", "GBPJPY", "EURAUD", "EURCHF", "EURNZD", "GBPAUD", "GBPCAD", "AUDJPY", "CADJPY"],
+  FOREX_EXOTIC: ["USDTRY", "USDMXN", "USDZAR", "USDPLN", "USDSEK", "USDNOK", "USDCNH", "USDINR"],
+  US_INDICES: ["SPX", "NDX", "DJI", "RUT", "STOXX", "CAC", "IBEX", "SMI"],
+  EU_INDICES: ["FTSE", "DAX", "STOXX"],
+  ASIA_INDICES: ["NIKKEI", "HANG", "KOSPI", "SENSEX", "ASX", "TSX"],
+  COMMODITY_METALS: ["GOLD", "SILVER", "COPPER", "PLAT", "PALADIUM"],
+  COMMODITY_ENERGY: ["OIL", "GAS", "LUMBER"],
+  COMMODITY_AGRI: ["WHEAT", "CORN", "SOYBEAN", "COCOA", "SUGAR"],
 };
 
 function getCorrelationGroup(sym) {
@@ -484,12 +658,6 @@ async function liveTradeCheck() {
       const currentPrice = result ? result.price : rawData[rawData.length - 1].close;
       liveState.currentPrices[sym] = currentPrice;
       if (!result) continue;
-
-      // ── MULTI-TIMEFRAME: weekly trend filter ──
-      const weeklyTrend = await getWeeklyTrend(yfSymbol);
-      const alignedWithWeekly = weeklyTrend === "neutral" ||
-                                 (result.longScore >= result.shortScore && weeklyTrend === "bullish") ||
-                                 (result.shortScore >= result.longScore && weeklyTrend === "bearish");
 
       const pos = liveState.positions[sym];
       const atrVal = result.atr;
@@ -693,14 +861,13 @@ async function liveTradeCheck() {
         if (tradingPaused) blocks.push("paused");
         if (!volumeOk) blocks.push("vol");
         if (!rrOk) blocks.push("rr");
-        if (!alignedWithWeekly) blocks.push("weekly");
         if (result.atrExpanding) blocks.push("atrSpike");
         if (result.longScore < minScore && result.shortScore < minScore) blocks.push(`score<${minScore}`);
         if (blocks.length > 0) console.log(`[BLOCKED] ${sym}: L=${result.longScore} S=${result.shortScore} → ${blocks.join(", ")}`);
       }
 
       if (!pos && !atMax && !cryptoLimit && !stockLimit && !fastLimit && !marketClosed && !forexClosed && !cooldownActive && !corrLimit && !tradingPaused) {
-        if (result.longScore >= minScore && volumeOk && rrOk && alignedWithWeekly && !result.atrExpanding && liveState.balance > 50) {
+        if (result.longScore >= minScore && volumeOk && rrOk && !result.atrExpanding && liveState.balance > 50) {
           const confidence = Math.min(result.longScore, 10);
           const baseRatio = 0.08 + (confidence - minScore) * 0.04;
           const spendRatio = Math.min(baseRatio, 0.25) * equityMult;
@@ -723,7 +890,7 @@ async function liveTradeCheck() {
 
           const tag = isCrypto ? "₿" : isFast ? "⚡" : asset?.type === "forex" ? "💱" : asset?.type === "commodity" ? "🥇" : asset?.type === "index" ? "📈" : "📊";
           addNotification("info", `${tag} LONG ${sym}`, `Acheté $${currentPrice.toFixed(2)} | Qty: ${qty} | TP: $${tpFinal} | SL: $${slFinal} | Score: ${result.longScore}`);
-        } else if (result.shortScore >= minScore && volumeOk && rrOk && alignedWithWeekly && !result.atrExpanding && liveState.balance > 50) {
+        } else if (result.shortScore >= minScore && volumeOk && rrOk && !result.atrExpanding && liveState.balance > 50) {
           const confidence = Math.min(result.shortScore, 10);
           const baseRatio = 0.08 + (confidence - minScore) * 0.04;
           const spendRatio = Math.min(baseRatio, 0.25) * equityMult;
