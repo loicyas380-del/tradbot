@@ -271,9 +271,10 @@ function App() {
                     <div className={`market-icon ${type}`}>
                       {type === "crypto" ? <Zap size={14} /> : type === "forex" ? <Activity size={14} /> : <BarChart3 size={14} />}
                       {isOpen && <div className="position-dot" />}
+                      {m.volatile && <div className="volatile-dot" />}
                     </div>
                     <div>
-                      <div className="market-name">{m.name}</div>
+                      <div className="market-name">{m.name}{m.volatile ? " 🔥" : ""}</div>
                       <div className="market-symbol">{m.symbol}</div>
                     </div>
                   </div>
@@ -613,8 +614,9 @@ function App() {
                     <motion.div key={p.symbol} className={`bot-pos-card ${p.side.toLowerCase()}`} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
                       onClick={() => { setSelectedSymbol(p.symbol); setPage("dashboard"); }}>
                       <div className="bpc-top">
-                        <span className={`bpc-side ${p.side.toLowerCase()}`}>{p.side === "LONG" ? "🟢 LONG" : "🔴 SHORT"}</span>
+                        <span className={`bpc-side ${p.side.toLowerCase()}`}>{p.side === "LONG" ? "🟢 LONG" : "🔴 SHORT"}{p.volatile ? " 🔥" : ""}</span>
                         <span className="bpc-symbol">{p.symbol}</span>
+                        {p.volatile && <span className="bpc-volatile">VOLATILE</span>}
                         {p.partialTaken && <span className="bpc-partial">50% TP</span>}
                       </div>
                       <div className="bpc-prices">

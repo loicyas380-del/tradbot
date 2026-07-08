@@ -1458,6 +1458,17 @@ body {
   animation: pulse-glow 2s infinite;
 }
 
+.volatile-dot {
+  position: absolute;
+  bottom: -2px;
+  right: -2px;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #ff6b35;
+  animation: pulse-glow 1s infinite;
+}
+
 /* ── LIVE POSITIONS ── */
 .live-positions {
   background: var(--bg-card);
@@ -1536,6 +1547,16 @@ body {
   padding: 2px 6px;
   border-radius: 4px;
   margin-left: auto;
+}
+
+.bpc-volatile {
+  font-size: 10px;
+  font-weight: 700;
+  background: linear-gradient(135deg, #ff6b35, #e74c3c);
+  color: #fff;
+  padding: 2px 6px;
+  border-radius: 4px;
+  margin-left: 4px;
 }
 
 .lpc-details {

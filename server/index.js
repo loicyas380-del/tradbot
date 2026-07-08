@@ -154,21 +154,21 @@ const ASSETS = {
   "RBLX":  { name: "Roblox",      base: 45,   vol: 0.04,  type: "stock" },
   "SPOT":  { name: "Spotify",     base: 310,  vol: 0.025, type: "stock" },
   "DKNG":  { name: "DraftKings",  base: 38,   vol: 0.035, type: "stock" },
-  "AI":    { name: "C3.ai",       base: 25,   vol: 0.05,  type: "stock" },
+  "AI":    { name: "C3.ai",       base: 25,   vol: 0.05,  type: "stock", volatile: true },
   "ZS":    { name: "Zscaler",     base: 200,  vol: 0.025, type: "stock" },
   "MDB":   { name: "MongoDB",     base: 260,  vol: 0.028, type: "stock" },
-  "UPST":  { name: "Upstart",     base: 55,   vol: 0.05,  type: "stock" },
-  "LCID":  { name: "Lucid",       base: 3.5,  vol: 0.06,  type: "stock" },
+  "UPST":  { name: "Upstart",     base: 55,   vol: 0.05,  type: "stock", volatile: true },
+  "LCID":  { name: "Lucid",       base: 3.5,  vol: 0.06,  type: "stock", volatile: true },
   "W":     { name: "Wayfair",     base: 55,   vol: 0.04,  type: "stock" },
   "TOST":  { name: "Toast",       base: 30,   vol: 0.035, type: "stock" },
   "BILL":  { name: "Bill.com",    base: 65,   vol: 0.035, type: "stock" },
   // ── STOCKS VOLATILES (quick trades 1-2h) ──
-  "MSTR":  { name: "MicroStrategy", base: 1800, vol: 0.05, type: "stock_fast", maxHold: 90 },
-  "SOFI":  { name: "SoFi",        base: 8,    vol: 0.045, type: "stock_fast", maxHold: 120 },
-  "HOOD":  { name: "Robinhood",   base: 22,   vol: 0.05,  type: "stock_fast", maxHold: 90 },
-  "ROKU":  { name: "Roku",        base: 65,   vol: 0.045, type: "stock_fast", maxHold: 120 },
-  "U":     { name: "Unity",       base: 22,   vol: 0.05,  type: "stock_fast", maxHold: 120 },
-  "ARM":   { name: "ARM",         base: 170,  vol: 0.04,  type: "stock_fast", maxHold: 90 },
+  "MSTR":  { name: "MicroStrategy", base: 1800, vol: 0.05, type: "stock_fast", maxHold: 90, volatile: true },
+  "SOFI":  { name: "SoFi",        base: 8,    vol: 0.045, type: "stock_fast", maxHold: 120, volatile: true },
+  "HOOD":  { name: "Robinhood",   base: 22,   vol: 0.05,  type: "stock_fast", maxHold: 90, volatile: true },
+  "ROKU":  { name: "Roku",        base: 65,   vol: 0.045, type: "stock_fast", maxHold: 120, volatile: true },
+  "U":     { name: "Unity",       base: 22,   vol: 0.05,  type: "stock_fast", maxHold: 120, volatile: true },
+  "ARM":   { name: "ARM",         base: 170,  vol: 0.04,  type: "stock_fast", maxHold: 90, volatile: true },
   // ── CRYPTO (verified on Yahoo Finance) ──
   "BTC":   { name: "Bitcoin",     base: 62000, vol: 0.025, type: "crypto" },
   "ETH":   { name: "Ethereum",    base: 3400,  vol: 0.03,  type: "crypto" },
@@ -181,14 +181,14 @@ const ASSETS = {
   "UNI":   { name: "Uniswap",     base: 7.5,   vol: 0.035, type: "crypto" },
   "AAVE":  { name: "Aave",        base: 95,    vol: 0.035, type: "crypto" },
   "LTC":   { name: "Litecoin",    base: 85,    vol: 0.03,  type: "crypto" },
-  "SHIB":  { name: "Shiba Inu",   base: 0.000025, vol: 0.07, type: "crypto" },
+  "SHIB":  { name: "Shiba Inu",   base: 0.000025, vol: 0.07, type: "crypto", volatile: true },
   "TRX":   { name: "Tron",        base: 0.12,  vol: 0.03,  type: "crypto" },
   "HBAR":  { name: "Hedera",      base: 0.08,  vol: 0.04,  type: "crypto" },
   "ICP":   { name: "ICP",         base: 12,    vol: 0.045, type: "crypto" },
   "APT":   { name: "Aptos",       base: 8,     vol: 0.045, type: "crypto" },
-  "SUI":   { name: "Sui",         base: 3,     vol: 0.05,  type: "crypto" },
+  "SUI":   { name: "Sui",         base: 3,     vol: 0.05,  type: "crypto", volatile: true },
   "NEAR":  { name: "NEAR",        base: 5.5,   vol: 0.045, type: "crypto" },
-  "PEPE":  { name: "Pepe",        base: 0.000012, vol: 0.06, type: "crypto" },
+  "PEPE":  { name: "Pepe",        base: 0.000012, vol: 0.06, type: "crypto", volatile: true },
   "FIL":   { name: "Filecoin",    base: 5.5,   vol: 0.045, type: "crypto" },
   "RENDER":{ name: "Render",      base: 8,     vol: 0.045, type: "crypto" },
   "FET":   { name: "Fetch.ai",    base: 2.2,   vol: 0.05,  type: "crypto" },
@@ -235,19 +235,19 @@ const ASSETS = {
   "DAX":    { name: "DAX",        base: 18500, vol: 0.009, type: "index", yfSym: "^GDAXI" },
   "NIKKEI": { name: "Nikkei 225", base: 39500, vol: 0.01,  type: "index", yfSym: "^N225" },
   // ── CRYPTO SUPPLEMENTAIRES ──
-  "BONK":  { name: "Bonk",        base: 0.00002, vol: 0.08, type: "crypto" },
-  "FLOKI": { name: "Floki",       base: 0.00018, vol: 0.07, type: "crypto" },
-  "TURBO": { name: "Turbo",       base: 0.005,  vol: 0.09, type: "crypto" },
-  "BRETT": { name: "Brett",       base: 0.15,   vol: 0.08, type: "crypto" },
+  "BONK":  { name: "Bonk",        base: 0.00002, vol: 0.08, type: "crypto", volatile: true },
+  "FLOKI": { name: "Floki",       base: 0.00018, vol: 0.07, type: "crypto", volatile: true },
+  "TURBO": { name: "Turbo",       base: 0.005,  vol: 0.09, type: "crypto", volatile: true },
+  "BRETT": { name: "Brett",       base: 0.15,   vol: 0.08, type: "crypto", volatile: true },
   "ARB":   { name: "Arbitrum",    base: 1.1,    vol: 0.045, type: "crypto" },
-  "PYTH":  { name: "Pyth Network",base: 0.4,    vol: 0.06, type: "crypto" },
-  "JUP":   { name: "Jupiter",     base: 0.8,    vol: 0.065, type: "crypto" },
-  "WORM":  { name: "Wormhole",     base: 0.5,    vol: 0.07, type: "crypto" },
-  "THETA": { name: "Theta",       base: 2,      vol: 0.055, type: "crypto" },
-  "ENJ":   { name: "Enjin",       base: 0.35,   vol: 0.06, type: "crypto" },
-  "AXS":   { name: "Axie",        base: 7,      vol: 0.055, type: "crypto" },
-  "CHZ":   { name: "Chiliz",      base: 0.12,   vol: 0.06, type: "crypto" },
-  "BAT":   { name: "Basic Attention", base: 0.2, vol: 0.055, type: "crypto" },
+  "PYTH":  { name: "Pyth Network",base: 0.4,    vol: 0.06, type: "crypto", volatile: true },
+  "JUP":   { name: "Jupiter",     base: 0.8,    vol: 0.065, type: "crypto", volatile: true },
+  "WORM":  { name: "Wormhole",     base: 0.5,    vol: 0.07, type: "crypto", volatile: true },
+  "THETA": { name: "Theta",       base: 2,      vol: 0.055, type: "crypto", volatile: true },
+  "ENJ":   { name: "Enjin",       base: 0.35,   vol: 0.06, type: "crypto", volatile: true },
+  "AXS":   { name: "Axie",        base: 7,      vol: 0.055, type: "crypto", volatile: true },
+  "CHZ":   { name: "Chiliz",      base: 0.12,   vol: 0.06, type: "crypto", volatile: true },
+  "BAT":   { name: "Basic Attention", base: 0.2, vol: 0.055, type: "crypto", volatile: true },
   "COMP":  { name: "Compound",    base: 55,     vol: 0.045, type: "crypto" },
   "EOS":   { name: "EOS",         base: 0.7,    vol: 0.045, type: "crypto" },
   "XLM":   { name: "Stellar",     base: 0.12,   vol: 0.045, type: "crypto" },
@@ -262,18 +262,18 @@ const ASSETS = {
   "KAVA":  { name: "Kava",        base: 0.7,    vol: 0.05, type: "crypto" },
   "ALGO":  { name: "Algorand",    base: 0.18,   vol: 0.05, type: "crypto" },
   "VET":   { name: "VeChain",     base: 0.035,  vol: 0.05, type: "crypto" },
-  "FTM":   { name: "Fantom",      base: 0.4,    vol: 0.06, type: "crypto" },
+  "FTM":   { name: "Fantom",      base: 0.4,    vol: 0.06, type: "crypto", volatile: true },
   "SAND":  { name: "Sandbox",     base: 0.5,    vol: 0.05,  type: "crypto" },
-  "IMX":   { name: "Immutable",   base: 1.5,    vol: 0.06, type: "crypto" },
-  "BLUR":  { name: "Blur",        base: 0.3,    vol: 0.07, type: "crypto" },
-  "ZRO":   { name: "LayerZero",   base: 4,      vol: 0.065, type: "crypto" },
-  "STRK":  { name: "Starknet",    base: 0.6,    vol: 0.065, type: "crypto" },
-  "SAGA":  { name: "Saga",        base: 1.5,    vol: 0.07, type: "crypto" },
-  "WLD":   { name: "Worldcoin",   base: 2,      vol: 0.07, type: "crypto" },
-  "TAO":   { name: "Bittensor",   base: 300,    vol: 0.06, type: "crypto" },
-  "AKT":   { name: "Akash",       base: 3.5,    vol: 0.065, type: "crypto" },
-  "OCEAN": { name: "Ocean",       base: 0.6,    vol: 0.06, type: "crypto" },
-  "GRT":   { name: "Graph",       base: 0.25,   vol: 0.055, type: "crypto" },
+  "IMX":   { name: "Immutable",   base: 1.5,    vol: 0.06, type: "crypto", volatile: true },
+  "BLUR":  { name: "Blur",        base: 0.3,    vol: 0.07, type: "crypto", volatile: true },
+  "ZRO":   { name: "LayerZero",   base: 4,      vol: 0.065, type: "crypto", volatile: true },
+  "STRK":  { name: "Starknet",    base: 0.6,    vol: 0.065, type: "crypto", volatile: true },
+  "SAGA":  { name: "Saga",        base: 1.5,    vol: 0.07, type: "crypto", volatile: true },
+  "WLD":   { name: "Worldcoin",   base: 2,      vol: 0.07, type: "crypto", volatile: true },
+  "TAO":   { name: "Bittensor",   base: 300,    vol: 0.06, type: "crypto", volatile: true },
+  "AKT":   { name: "Akash",       base: 3.5,    vol: 0.065, type: "crypto", volatile: true },
+  "OCEAN": { name: "Ocean",       base: 0.6,    vol: 0.06, type: "crypto", volatile: true },
+  "GRT":   { name: "Graph",       base: 0.25,   vol: 0.055, type: "crypto", volatile: true },
   // ── ACTIONS SUPPLEMENTAIRES ──
   "BABA":  { name: "Alibaba",     base: 85,    vol: 0.03,  type: "stock" },
   "JD":    { name: "JD.com",      base: 28,    vol: 0.035, type: "stock" },
@@ -634,6 +634,22 @@ function analyzeDay(ana, i) {
   const rsiRising = rsiPrev != null && rsiVal > rsiPrev;
   const rsiFalling = rsiPrev != null && rsiVal < rsiPrev;
 
+  // ── VOLUME SPIKE ──
+  const volumeSpike = volNow && volAvg ? volNow > volAvg * 2.0 : false;
+
+  // ── STOCHASTIC CONFIRMATION ──
+  const stochD = stochVal.d;
+  const stochConfirmLong = stochVal.k < 25 && stochD < 25;
+  const stochConfirmShort = stochVal.k > 75 && stochD > 75;
+
+  // ── BB SQUEEZE (narrow bands = volatility expansion imminent) ──
+  const bbWidth = bbVal ? (bbVal.upper - bbVal.lower) / ((bbVal.upper + bbVal.lower) / 2) : 0;
+  const bbSqueeze = bbWidth < 0.03;
+
+  // ── STRONG TREND (price above EMA20 AND EMA50 for long) ──
+  const strongUptrend = ema20Val > ema50Val && price > ema20Val && price > ema50Val;
+  const strongDowntrend = ema20Val < ema50Val && price < ema20Val && price < ema50Val;
+
   // LONG
   let longScore = 0, longReasons = [];
   if (uptrend) {
@@ -650,6 +666,11 @@ function analyzeDay(ana, i) {
     else if (bbPct < 0.3) { longScore += 1; longReasons.push("BB low zone"); }
     if (stochVal.k < 25) { longScore += 1; longReasons.push("Stoch low"); }
     if (price > ema20Val) { longScore += 1; longReasons.push("Above EMA20"); }
+    // NEW: HIGH-CONFIDENCE SIGNALS
+    if (volumeSpike) { longScore += 1; longReasons.push("Volume spike"); }
+    if (stochConfirmLong) { longScore += 1; longReasons.push("Stoch confirm"); }
+    if (bbSqueeze) { longScore += 1; longReasons.push("BB squeeze"); }
+    if (strongUptrend) { longScore += 1; longReasons.push("Strong trend"); }
   }
 
   // SHORT
@@ -668,6 +689,11 @@ function analyzeDay(ana, i) {
     else if (bbPct > 0.7) { shortScore += 1; shortReasons.push("BB high zone"); }
     if (stochVal.k > 75) { shortScore += 1; shortReasons.push("Stoch high"); }
     if (price < ema20Val) { shortScore += 1; shortReasons.push("Below EMA20"); }
+    // NEW: HIGH-CONFIDENCE SIGNALS
+    if (volumeSpike) { shortScore += 1; shortReasons.push("Volume spike"); }
+    if (stochConfirmShort) { shortScore += 1; shortReasons.push("Stoch confirm"); }
+    if (bbSqueeze) { shortScore += 1; shortReasons.push("BB squeeze"); }
+    if (strongDowntrend) { shortScore += 1; shortReasons.push("Strong trend"); }
   } else if (rsiVal > 75 && bbPct > 0.9) {
     shortScore += 4; shortReasons.push("Counter-trend overbought");
   }
@@ -830,11 +856,11 @@ async function processAsset(sym) {
             if (posNow.side === "LONG") {
               if (currentPrice <= posNow.sl) { shouldExit = true; exitPrice = posNow.sl; exitReason = "SL"; }
               else if (currentPrice >= posNow.tp) { shouldExit = true; exitPrice = posNow.tp; exitReason = "TP"; }
-              else if (result.shortScore >= risk.minScore && holdMinutes >= 10) { shouldExit = true; exitReason = "REVERSE"; }
+              else if (result.shortScore >= effectiveMinScore && holdMinutes >= 10) { shouldExit = true; exitReason = "REVERSE"; }
             } else {
               if (currentPrice >= posNow.sl) { shouldExit = true; exitPrice = posNow.sl; exitReason = "SL"; }
               else if (currentPrice <= posNow.tp) { shouldExit = true; exitPrice = posNow.tp; exitReason = "TP"; }
-              else if (result.longScore >= risk.minScore && holdMinutes >= 10) { shouldExit = true; exitReason = "REVERSE"; }
+              else if (result.longScore >= effectiveMinScore && holdMinutes >= 10) { shouldExit = true; exitReason = "REVERSE"; }
             }
           }
         }
@@ -904,15 +930,19 @@ async function processAsset(sym) {
 
       const minScore = inDrawdown ? risk.minScore + 1 : risk.minScore;
 
+      // ── VOLATILE ASSET: HIGHER MINSCORE (90% confidence required) ──
+      const isVolatile = asset?.volatile === true;
+      const effectiveMinScore = isVolatile ? Math.max(minScore, 8) : minScore;
+
       const volumeOk = result.volumeConfirm;
 
       let rrOk = true;
-      if (result.longScore >= minScore) {
+      if (result.longScore >= effectiveMinScore) {
         const riskCalc = currentPrice - result.sl;
         const reward = result.tp - currentPrice;
         rrOk = riskCalc > 0 && (reward / riskCalc) >= risk.rr;
       }
-      if (result.shortScore >= minScore && rrOk) {
+      if (result.shortScore >= effectiveMinScore && rrOk) {
         const riskCalc = result.shortSl - currentPrice;
         const reward = currentPrice - result.shortTp;
         rrOk = riskCalc > 0 && (reward / riskCalc) >= risk.rr;
@@ -936,13 +966,14 @@ async function processAsset(sym) {
         if (!volumeOk) blocks.push("vol");
         if (!rrOk) blocks.push("rr");
         if (result.longScore < minScore && result.shortScore < minScore) blocks.push(`score<${minScore}`);
+        if (isVolatile && result.longScore < 8 && result.shortScore < 8) blocks.push("volatile<8");
         if (blocks.length > 0) console.log(`[BLOCKED] ${sym}: L=${result.longScore} S=${result.shortScore} → ${blocks.join(", ")}`);
       }
 
       if (!pos && !atMax && !cryptoLimit && !stockLimit && !fastLimit && !marketClosed && !forexClosed && !cooldownActive && !corrLimit && !tradingPaused) {
-        if (result.longScore >= minScore && volumeOk && rrOk && st.balance > 1) {
+        if (result.longScore >= effectiveMinScore && volumeOk && rrOk && st.balance > 1) {
           const confidence = Math.min(result.longScore, 10);
-          const baseRatio = risk.maxRiskPct * 0.6 + (confidence - minScore) * risk.maxRiskPct * 0.08;
+          const baseRatio = risk.maxRiskPct * 0.6 + (confidence - effectiveMinScore) * risk.maxRiskPct * 0.08;
           const spendRatio = Math.min(baseRatio, risk.maxRiskPct) * equityMult;
           const spend = st.balance * spendRatio;
           const qty = +(spend / currentPrice).toFixed(8);
@@ -962,10 +993,11 @@ async function processAsset(sym) {
           setBalance(st.balance - cost);
 
           const tag = isCrypto ? "₿" : isFast ? "⚡" : asset?.type === "forex" ? "💱" : asset?.type === "commodity" ? "🥇" : asset?.type === "index" ? "📈" : "📊";
-          addNotification("info", `${tag} LONG ${sym}`, `Acheté $${currentPrice.toFixed(2)} | Qty: ${qty} | TP: $${tpFinal} | SL: $${slFinal} | Score: ${result.longScore} | Risk: ${risk.name}`);
-        } else if (result.shortScore >= minScore && volumeOk && rrOk && st.balance > 1) {
+          const volatileTag = isVolatile ? "🔥" : "";
+          addNotification("info", `${tag}${volatileTag} LONG ${sym}`, `Acheté $${currentPrice.toFixed(2)} | Qty: ${qty} | TP: $${tpFinal} | SL: $${slFinal} | Score: ${result.longScore} | Risk: ${risk.name}${isVolatile ? " | ⚡VOLATILE" : ""}`);
+        } else if (result.shortScore >= effectiveMinScore && volumeOk && rrOk && st.balance > 1) {
           const confidence = Math.min(result.shortScore, 10);
-          const baseRatio = risk.maxRiskPct * 0.6 + (confidence - minScore) * risk.maxRiskPct * 0.08;
+          const baseRatio = risk.maxRiskPct * 0.6 + (confidence - effectiveMinScore) * risk.maxRiskPct * 0.08;
           const spendRatio = Math.min(baseRatio, risk.maxRiskPct) * equityMult;
           const spend = st.balance * spendRatio;
           const qty = +(spend / currentPrice).toFixed(8);
@@ -985,7 +1017,8 @@ async function processAsset(sym) {
           setBalance(st.balance - cost);
 
           const tag = isCrypto ? "₿" : isFast ? "⚡" : asset?.type === "forex" ? "💱" : asset?.type === "commodity" ? "🥇" : asset?.type === "index" ? "📈" : "📊";
-          addNotification("info", `${tag} SHORT ${sym}`, `Vendu $${currentPrice.toFixed(2)} | Qty: ${qty} | TP: $${shortTpFinal} | SL: $${shortSlFinal} | Score: ${result.shortScore} | Risk: ${risk.name}`);
+          const volatileTag = isVolatile ? "🔥" : "";
+          addNotification("info", `${tag}${volatileTag} SHORT ${sym}`, `Vendu $${currentPrice.toFixed(2)} | Qty: ${qty} | TP: $${shortTpFinal} | SL: $${shortSlFinal} | Score: ${result.shortScore} | Risk: ${risk.name}${isVolatile ? " | ⚡VOLATILE" : ""}`);
         }
       }
     } catch (err) {
@@ -1035,9 +1068,9 @@ app.get("/api/markets", async (req, res) => {
           const r = await yfChartFast(yfSymFn(id, a), "1d", "1d");
           const price = r.meta?.price || a.base;
           const prev = r.meta?.previousClose || a.base;
-          return { symbol: id, name: a.name, type: a.type, price: +price.toFixed(4), change: +(price - prev).toFixed(4), changePercent: +(((price - prev) / prev) * 100).toFixed(2), volume: 0 };
+          return { symbol: id, name: a.name, type: a.type, volatile: a.volatile || false, price: +price.toFixed(4), change: +(price - prev).toFixed(4), changePercent: +(((price - prev) / prev) * 100).toFixed(2), volume: 0 };
         } catch {
-          return { symbol: id, name: a.name, type: a.type, price: a.base, change: 0, changePercent: 0, volume: 0 };
+          return { symbol: id, name: a.name, type: a.type, volatile: a.volatile || false, price: a.base, change: 0, changePercent: 0, volume: 0 };
         }
       })
     );
@@ -1113,6 +1146,7 @@ app.get("/api/live", (req, res) => {
     }
     return {
       symbol: sym, name: ASSETS[sym]?.name || sym, type: ASSETS[sym]?.type || "unknown",
+      volatile: ASSETS[sym]?.volatile || false,
       side: p.side, entryPrice: p.entryPrice, currentPrice: +currentPrice.toFixed(4),
       entryTime: p.entryTime, qty: p.qty, initialQty: p.initialQty || p.qty,
       tp: p.tp, sl: p.sl, cost: p.cost, partialTaken: p.partialTaken || false,
