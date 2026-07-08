@@ -481,6 +481,15 @@ function getPositionCount() {
   return Object.keys(liveState.positions).length;
 }
 
+function getTotalEquity() {
+  let equity = liveState.balance;
+  for (const sym of Object.keys(liveState.positions)) {
+    const pos = liveState.positions[sym];
+    equity += pos.cost;
+  }
+  return equity;
+}
+
 function getCryptoCount() {
   return Object.keys(liveState.positions).filter(s => ASSETS[s]?.type === "crypto").length;
 }
@@ -790,7 +799,7 @@ async function processAsset(sym) {
           delete liveState.positions[sym];
           liveState.lastExitTime[sym] = Date.now();
 
-          if (liveState.balance > liveState.peakBalance) liveState.peakBalance = liveState.balance;
+          if (getTotalEquity() > liveState.peakBalance) liveState.peakBalance = getTotalEquity();
 
           const emoji = pnl >= 0 ? "✅" : "❌";
           const sideLabel = posFinal.side === "LONG" ? "LONG" : "SHORT";
@@ -811,7 +820,8 @@ async function processAsset(sym) {
       const isIndex = asset?.type === "index";
 
       // ── DRAWDOWN ADAPTIVE LIMITS ──
-      const drawdown = (liveState.peakBalance - liveState.balance) / liveState.peakBalance;
+      const totalEquity = getTotalEquity();
+      const drawdown = liveState.peakBalance > 0 ? (liveState.peakBalance - totalEquity) / liveState.peakBalance : 0;
       const tradingPaused = drawdown > 0.15;
       const inDrawdown = drawdown > 0.10;
       const maxPos = inDrawdown ? Math.max(10, Math.floor(MAX_POSITIONS * 0.5)) : MAX_POSITIONS;
@@ -1072,7 +1082,7 @@ app.get("/api/live", (req, res) => {
     openTrades,
     tradeHistory: liveState.tradeHistory.slice(0, 50),
     notifications: liveState.notifications.slice(0, 30),
-    drawdown: +(((liveState.peakBalance - liveState.balance) / liveState.peakBalance) * 100).toFixed(2),
+    drawdown: +((liveState.peakBalance > 0 ? (liveState.peakBalance - getTotalEquity()) / liveState.peakBalance : 0) * 100).toFixed(2),
     equityMult: +getEquityMultiplier().toFixed(2),
   });
 });
