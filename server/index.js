@@ -539,6 +539,7 @@ function analyzeDay(ana, i) {
   const atrVal = getVal(atr, aI);
   const stochVal = getVal(stoch, sI);
   const volNow = getVal(volumes, i);
+  const volPrev = getVal(volumes, i - 1);
   const volAvg = getVal(volSma20, vI);
 
   if (rsiVal == null || !macdCurr || !bbVal || !ema20Val || !ema50Val || !atrVal || !stochVal) return null;
@@ -546,7 +547,7 @@ function analyzeDay(ana, i) {
   const uptrend = ema20Val > ema50Val && (sma200Val == null || price > sma200Val);
   const downtrend = ema20Val < ema50Val && (sma200Val == null || price < sma200Val);
   const bbPct = (price - bbVal.lower) / (bbVal.upper - bbVal.lower);
-  const volumeConfirm = volNow && volAvg ? volNow > volAvg * 0.5 : true;
+  const volumeConfirm = volPrev && volAvg ? volPrev > volAvg * 0.5 : true;
 
   // ── ATR EXPANSION (simple check) ──
   const atrExpanding = false;
