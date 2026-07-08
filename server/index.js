@@ -640,6 +640,7 @@ function getEquityMultiplier() {
 
 // ─── LIVE TRADE CHECK (runs every 30s) ──────────────────────
 async function processAsset(sym) {
+  try {
   const asset = ASSETS[sym];
   let rawData;
   const yfSymbol = asset?.yfSym || (asset?.type === "crypto" ? sym + "-USD" : sym);
