@@ -27,6 +27,8 @@ function App() {
   const [showNotifications, setShowNotifications] = useState(false);
   const [lastNotifId, setLastNotifId] = useState(0);
   const [page, setPage] = useState("dashboard"); // "dashboard" | "bot"
+  const [depositAmount, setDepositAmount] = useState("");
+  const [showDeposit, setShowDeposit] = useState(false);
   const chartRef = useRef(null);
   const chartInstance = useRef(null);
   const liveDataRef = useRef(null);
@@ -172,8 +174,33 @@ function App() {
   };
 
   const resetAccount = async () => {
-    if (!confirm("Reset le compte à €1000 ?")) return;
+    if (!confirm(`Reset le compte ${liveData?.mode === "real" ? "RÉEL" : "VIRTUEL"} ?`)) return;
     await fetch(`${API}/reset`, { method: "POST" });
+    fetchLive();
+  };
+
+  const switchMode = async (mode) => {
+    await fetch(`${API}/switch-mode`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ mode }) });
+    fetchLive();
+  };
+
+  const handleDeposit = async () => {
+    const amount = parseFloat(depositAmount);
+    if (!amount || amount <= 0) return;
+    await fetch(`${API}/deposit`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ mode: liveData?.mode || "virtual", amount }) });
+    setDepositAmount("");
+    setShowDeposit(false);
+    fetchLive();
+  };
+
+  const handleWithdraw = async () => {
+    const amount = parseFloat(depositAmount);
+    if (!amount || amount <= 0) return;
+    const res = await fetch(`${API}/withdraw`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ mode: liveData?.mode || "virtual", amount }) });
+    const data = await res.json();
+    if (data.error) alert(data.error);
+    setDepositAmount("");
+    setShowDeposit(false);
     fetchLive();
   };
 
@@ -240,19 +267,51 @@ function App() {
         </div>
         {/* BOTTOM BUTTONS */}
         <div className="sidebar-bottom">
+          {/* MODE SWITCHER */}
+          <div className="mode-switcher">
+            <button className={`mode-btn ${liveData?.mode === "virtual" ? "active" : ""}`} onClick={() => switchMode("virtual")}>
+              🎮 Virtuel: €{(liveData?.virtualBalance || 0).toFixed(2)}
+            </button>
+            <button className={`mode-btn real ${liveData?.mode === "real" ? "active" : ""}`} onClick={() => switchMode("real")}>
+              💰 Réel: €{(liveData?.realBalance || 0).toFixed(2)}
+            </button>
+          </div>
+
+          {/* RISK PROFILE */}
+          <div className="risk-profile">
+            <span className="risk-badge">{liveData?.riskProfile || "micro"}</span>
+            <span className="risk-label">Profil risque</span>
+          </div>
+
           {/* POSITIONS COUNTER */}
           <div className="positions-counter">
             <div className="pos-count-bar">
-                {Array.from({ length: 40 }).map((_, i) => (
+                {Array.from({ length: liveData?.maxPositions || 3 }).map((_, i) => (
                 <div key={i} className={`pos-slot ${i < positionCount ? "filled" : ""}`} />
               ))}
             </div>
-            <span className="pos-count-text">{positionCount}/{liveData?.maxPositions || 10} positions</span>
+            <span className="pos-count-text">{positionCount}/{liveData?.maxPositions || 3} positions</span>
           </div>
+
+          {/* DEPOSIT / WITHDRAW */}
+          {showDeposit ? (
+            <div className="deposit-form">
+              <input type="number" placeholder="Montant €" value={depositAmount} onChange={(e) => setDepositAmount(e.target.value)} autoFocus />
+              <div className="deposit-actions">
+                <button className="btn-deposit" onClick={handleDeposit}>+ Déposer</button>
+                <button className="btn-withdraw" onClick={handleWithdraw}>- Retirer</button>
+              </div>
+              <button className="btn-close-deposit" onClick={() => setShowDeposit(false)}>Annuler</button>
+            </div>
+          ) : (
+            <button className="btn-deposit-toggle" onClick={() => setShowDeposit(true)}>
+              💳 Gérer l'argent
+            </button>
+          )}
 
           <button className="btn-reset" onClick={resetAccount}>
             <RotateCcw size={14} />
-            Reset €1000
+            Reset {liveData?.mode === "real" ? "Réel" : "Virtuel"}
           </button>
 
           <div className="nav-buttons">
@@ -366,9 +425,9 @@ function App() {
               {liveData && (
                 <motion.div className="stats-grid" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
                   <div className="stat-card green">
-                    <div className="stat-label">Balance</div>
+                    <div className="stat-label">{liveData.mode === "real" ? "💰 Argent Réel" : "🎮 Argent Virtuel"}</div>
                     <div className="stat-value neutral">€{liveData.balance.toLocaleString()}</div>
-                    <div className="stat-sub">Initial: €{liveData.initialBalance}</div>
+                    <div className="stat-sub">Équité: €{liveData.totalEquity?.toLocaleString() || liveData.balance.toLocaleString()}</div>
                   </div>
                   <div className={`stat-card ${liveData.totalPnL >= 0 ? "green" : "red"}`}>
                     <div className="stat-label">Total P&L</div>
