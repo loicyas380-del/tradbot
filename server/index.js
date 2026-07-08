@@ -1093,6 +1093,41 @@ app.post("/api/reset", (req, res) => {
   res.json({ ok: true });
 });
 
+// ─── DEBUG ASSET ───────────────────────────────────────────
+app.get("/api/debug/:symbol", async (req, res) => {
+  const sym = req.params.symbol;
+  const asset = ASSETS[sym];
+  if (!asset) return res.json({ error: "Unknown symbol", available: Object.keys(ASSETS).slice(0, 20) });
+  const yfSymbol = asset.yfSym || (asset.type === "crypto" ? sym + "-USD" : sym);
+  let dataSource = "yf";
+  let rawData;
+  try {
+    rawData = (await yfChartFast(yfSymbol, "3mo", "1d")).data;
+  } catch (e) {
+    dataSource = "simulated";
+    rawData = generateData(sym, 90, asset.base, asset.vol);
+  }
+  if (!rawData || rawData.length < 50) return res.json({ error: "Not enough data", len: rawData?.length });
+  const ana = computeIndicators(rawData);
+  const result = analyzeDay(ana, ana.len - 1);
+  res.json({
+    sym, type: asset.type, dataSource,
+    price: rawData[rawData.length - 1].close,
+    dataLen: rawData.length,
+    indicators: {
+      rsi: result?.rsi, macdHist: result?.macdHist,
+      ema20: result?.ema20, ema50: result?.ema50, sma200: result?.sma200,
+      atr: result?.atr, stochK: result?.stochK,
+      volNow: result?.volNow, volAvg: result?.volAvg,
+    },
+    longScore: result?.longScore, shortScore: result?.shortScore,
+    tp: result?.tp, sl: result?.sl,
+    shortTp: result?.shortTp, shortSl: result?.shortSl,
+    volumeConfirm: result?.volumeConfirm,
+    longReasons: result?.longReasons, shortReasons: result?.shortReasons,
+  });
+});
+
 // ─── MANUAL CHECK ───────────────────────────────────────────
 app.post("/api/live/check", async (req, res) => {
   try {
