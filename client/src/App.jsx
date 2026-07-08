@@ -29,6 +29,7 @@ function App() {
   const [page, setPage] = useState("dashboard"); // "dashboard" | "bot"
   const [depositAmount, setDepositAmount] = useState("");
   const [showDeposit, setShowDeposit] = useState(false);
+  const [alpacaData, setAlpacaData] = useState(null);
   const chartRef = useRef(null);
   const chartInstance = useRef(null);
   const liveDataRef = useRef(null);
@@ -58,6 +59,15 @@ function App() {
     const interval = setInterval(fetchLive, 5000);
     return () => clearInterval(interval);
   }, [fetchLive]);
+
+  // Fetch Alpaca status
+  useEffect(() => {
+    fetch(`${API}/alpaca/status`).then((r) => r.json()).then(setAlpacaData).catch(() => {});
+    const interval = setInterval(() => {
+      fetch(`${API}/alpaca/status`).then((r) => r.json()).then(setAlpacaData).catch(() => {});
+    }, 15000);
+    return () => clearInterval(interval);
+  }, []);
 
   // Keep liveDataRef in sync
   useEffect(() => { liveDataRef.current = liveData; }, [liveData]);
@@ -204,6 +214,17 @@ function App() {
     fetchLive();
   };
 
+  const handleStripeCheckout = async () => {
+    const amount = parseFloat(depositAmount);
+    if (!amount || amount < 5) { alert("Minimum dépôt: €5"); return; }
+    try {
+      const res = await fetch(`${API}/stripe/checkout`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ amount, mode: liveData?.mode || "virtual" }) });
+      const data = await res.json();
+      if (data.url) { window.location.href = data.url; }
+      else { alert("Erreur: " + (data.error || "Stripe non configuré")); }
+    } catch (e) { alert("Erreur de connexion"); }
+  };
+
   const positionCount = liveData?.positionCount || 0;
 
   return (
@@ -296,12 +317,15 @@ function App() {
           {/* DEPOSIT / WITHDRAW */}
           {showDeposit ? (
             <div className="deposit-form">
-              <input type="number" placeholder="Montant €" value={depositAmount} onChange={(e) => setDepositAmount(e.target.value)} autoFocus />
+              <input type="number" placeholder="Montant €" value={depositAmount} onChange={(e) => setDepositAmount(e.target.value)} autoFocus min="5" />
               <div className="deposit-actions">
-                <button className="btn-deposit" onClick={handleDeposit}>+ Déposer</button>
+                <button className="btn-deposit" onClick={handleDeposit}>+ Manuel</button>
+                <button className="btn-stripe" onClick={handleStripeCheckout}>💳 Carte</button>
+              </div>
+              <div className="deposit-actions" style={{ marginTop: 4 }}>
                 <button className="btn-withdraw" onClick={handleWithdraw}>- Retirer</button>
               </div>
-              <button className="btn-close-deposit" onClick={() => setShowDeposit(false)}>Annuler</button>
+              <button className="btn-close-deposit" onClick={() => { setShowDeposit(false); setDepositAmount(""); }}>Annuler</button>
             </div>
           ) : (
             <button className="btn-deposit-toggle" onClick={() => setShowDeposit(true)}>
@@ -445,6 +469,55 @@ function App() {
                     <div className="stat-sub">{positionCount}/{liveData.maxPositions} positions</div>
                   </div>
                 </motion.div>
+              )}
+
+              {/* ALPACA STATUS */}
+              {alpacaData && alpacaData.connected && (
+                <motion.div className="alpaca-section" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}>
+                  <div className="alpaca-header">
+                    <Activity size={16} />
+                    <span>Alpaca ({alpacaData.paper ? "Paper Trading" : "Live Trading"})</span>
+                    <span className={`alpaca-status ${alpacaData.status === "ACTIVE" ? "active" : ""}`}>{alpacaData.status}</span>
+                  </div>
+                  <div className="alpaca-grid">
+                    <div className="alpaca-stat">
+                      <span className="alpaca-stat-label">Équité</span>
+                      <span className="alpaca-stat-value">${alpacaData.equity?.toFixed(2)}</span>
+                    </div>
+                    <div className="alpaca-stat">
+                      <span className="alpaca-stat-label">Cash</span>
+                      <span className="alpaca-stat-value">${alpacaData.cash?.toFixed(2)}</span>
+                    </div>
+                    <div className="alpaca-stat">
+                      <span className="alpaca-stat-label">Buying Power</span>
+                      <span className="alpaca-stat-value">${alpacaData.buyingPower?.toFixed(2)}</span>
+                    </div>
+                    <div className="alpaca-stat">
+                      <span className="alpaca-stat-label">P&L Jour</span>
+                      <span className={`alpaca-stat-value ${(alpacaData.dayPnL || 0) >= 0 ? "positive" : "negative"}`}>
+                        {(alpacaData.dayPnL || 0) >= 0 ? "+" : ""}${alpacaData.dayPnL?.toFixed(2)} ({alpacaData.dayPnLPercent}%)
+                      </span>
+                    </div>
+                  </div>
+                  {alpacaData.positions?.length > 0 && (
+                    <div className="alpaca-positions">
+                      {alpacaData.positions.map((p) => (
+                        <div key={p.symbol} className="alpaca-pos">
+                          <span className={`alpaca-pos-side ${p.side}`}>{p.side === "long" ? "🟢" : "🔴"} {p.symbol}</span>
+                          <span className="alpaca-pos-qty">{p.qty}</span>
+                          <span className={`alpaca-pos-pnl ${(p.pnl || 0) >= 0 ? "positive" : "negative"}`}>
+                            {(p.pnl || 0) >= 0 ? "+" : ""}${p.pnl?.toFixed(2)} ({p.pnlPercent?.toFixed(2)}%)
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </motion.div>
+              )}
+              {alpacaData && !alpacaData.connected && (
+                <div className="alpaca-offline">
+                  <Activity size={14} /> Alpaca non configuré — <a href="https://alpac.markets" target="_blank" rel="noreferrer">Créer un compte gratuit</a>
+                </div>
               )}
 
               {/* TRADE HISTORY */}

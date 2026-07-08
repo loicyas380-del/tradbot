@@ -6,12 +6,32 @@ import { dirname, join } from "path";
 import {
   RSI, MACD, BollingerBands, EMA, SMA, ATR, Stochastic,
 } from "technicalindicators";
+import Stripe from "stripe";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
 const app = express();
 const PORT = process.env.PORT || 3001;
+
+// ─── STRIPE ──────────────────────────────────────────────────
+const stripe = process.env.STRIPE_SECRET_KEY ? new Stripe(process.env.STRIPE_SECRET_KEY) : null;
+
+// ─── ALPACA ──────────────────────────────────────────────────
+let alpaca = null;
+if (process.env.ALPACA_KEY_ID && process.env.ALPACA_SECRET_KEY) {
+  const Alpaca = (await import("@alpacahq/alpaca-trade-api")).default;
+  alpaca = new Alpaca({
+    keyId: process.env.ALPACA_KEY_ID,
+    secretKey: process.env.ALPACA_SECRET_KEY,
+    paper: process.env.ALPACA_PAPER !== "false",
+    baseUrl: process.env.ALPACA_BASE_URL || "https://paper-api.alpaca.markets",
+    dataBaseUrl: "https://data.alpaca.markets",
+  });
+  console.log(`[ALPACA] Connected (${process.env.ALPACA_PAPER !== "false" ? "PAPER" : "LIVE"} mode)`);
+} else {
+  console.log("[ALPACA] Not configured (no API keys)");
+}
 
 app.use(cors());
 app.use(express.json());
@@ -1290,6 +1310,123 @@ app.post("/api/ai/generate", async (req, res) => {
     aiReports.unshift(report);
     if (aiReports.length > 30) aiReports.pop();
     res.json(report);
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// ═══════════════════════════════════════════════════════════════
+// STRIPE: Credit Card Deposits
+// ═══════════════════════════════════════════════════════════════
+app.post("/api/stripe/checkout", async (req, res) => {
+  if (!stripe) return res.status(500).json({ error: "Stripe not configured" });
+  try {
+    const { amount, mode } = req.body;
+    const a = parseFloat(amount);
+    if (!a || a < 5) return res.status(400).json({ error: "Minimum dépôt: €5" });
+
+    const session = await stripe.checkout.sessions.create({
+      payment_method_types: ["card"],
+      line_items: [{ price_data: {
+        currency: "eur",
+        product_data: { name: `Dépôt TradBot (${mode === "real" ? "Argent Réel" : "Argent Virtuel"})`, description: `Dépôt de €${a.toFixed(2)} dans le mode ${mode}` },
+        unit_amount: Math.round(a * 100),
+      }, quantity: 1 }],
+      mode: "payment",
+      success_url: `${req.headers.origin || "https://tradbot-4fuj.onrender.com"}?payment=success&session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${req.headers.origin || "https://tradbot-4fuj.onrender.com"}?payment=cancelled`,
+      metadata: { mode: mode || "virtual", amount: a },
+    });
+
+    res.json({ url: session.url, sessionId: session.id });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// Stripe webhook — confirm payment
+app.post("/api/stripe/webhook", express.raw({ type: "application/json" }), async (req, res) => {
+  if (!stripe) return res.status(200).send("No Stripe");
+  try {
+    const sig = req.headers["stripe-signature"];
+    const endpointSecret = process.env.STRIPE_WEBHOOK_SECRET;
+    let event;
+    if (endpointSecret) {
+      event = stripe.webhooks.constructEvent(req.body, sig, endpointSecret);
+    } else {
+      event = JSON.parse(req.body);
+    }
+
+    if (event.type === "checkout.session.completed") {
+      const session = event.data.object;
+      const mode = session.metadata?.mode || "virtual";
+      const amount = parseFloat(session.metadata?.amount) || 0;
+
+      if (mode === "real") {
+        liveState.realBalance += amount;
+        liveState.realDepositHistory.unshift({ id: Date.now(), type: "stripe_deposit", amount, balance: liveState.realBalance, time: new Date().toISOString() });
+        addNotification("success", "💳 DÉPÔT STRIPE RÉEL", `+€${amount.toFixed(2)} via carte bancaire → Solde: €${liveState.realBalance.toFixed(2)}`);
+      } else {
+        liveState.virtualBalance += amount;
+        liveState.virtualDepositHistory.unshift({ id: Date.now(), type: "stripe_deposit", amount, balance: liveState.virtualBalance, time: new Date().toISOString() });
+        addNotification("success", "💳 DÉPÔT STRIPE VIRTUEL", `+€${amount.toFixed(2)} via carte bancaire → Solde: €${liveState.virtualBalance.toFixed(2)}`);
+      }
+    }
+    res.json({ received: true });
+  } catch (err) { res.json({ received: true }); }
+});
+
+// ═══════════════════════════════════════════════════════════════
+// ALPACA: Real Trading
+// ═══════════════════════════════════════════════════════════════
+app.get("/api/alpaca/status", async (req, res) => {
+  if (!alpaca) return res.json({ connected: false, message: "Alpaca not configured" });
+  try {
+    const account = await alpaca.getAccount();
+    const positions = await alpaca.getPositions();
+    const orders = await alpaca.getOrders({ status: "open" });
+    res.json({
+      connected: true,
+      paper: process.env.ALPACA_PAPER !== "false",
+      accountId: account.id,
+      status: account.status,
+      equity: parseFloat(account.equity),
+      cash: parseFloat(account.cash),
+      buyingPower: parseFloat(account.buying_power),
+      dayPnL: parseFloat(account.equity) - parseFloat(account.last_equity),
+      dayPnLPercent: ((parseFloat(account.equity) - parseFloat(account.last_equity)) / parseFloat(account.last_equity) * 100).toFixed(2),
+      positionsCount: positions.length,
+      openOrdersCount: orders.length,
+      positions: positions.map(p => ({
+        symbol: p.symbol, side: p.side, qty: p.qty,
+        avgEntry: parseFloat(p.avg_entry_price),
+        currentPrice: parseFloat(p.current_price),
+        pnl: parseFloat(p.unrealized_pl),
+        pnlPercent: parseFloat(p.unrealized_plpc) * 100,
+      })),
+    });
+  } catch (err) { res.json({ connected: false, error: err.message }); }
+});
+
+app.post("/api/alpaca/buy", async (req, res) => {
+  if (!alpaca) return res.status(500).json({ error: "Alpaca not configured" });
+  try {
+    const { symbol, notional } = req.body;
+    const order = await alpaca.createOrder({
+      symbol, notional: parseFloat(notional),
+      side: "buy", type: "market", time_in_force: "day",
+    });
+    addNotification("success", `🟢 ALPACA BUY ${symbol}`, `Ordre passé: $${notional}`);
+    res.json({ orderId: order.id, status: order.status });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+app.post("/api/alpaca/sell", async (req, res) => {
+  if (!alpaca) return res.status(500).json({ error: "Alpaca not configured" });
+  try {
+    const { symbol, qty } = req.body;
+    const order = await alpaca.createOrder({
+      symbol, qty: qty.toString(),
+      side: "sell", type: "market", time_in_force: "day",
+    });
+    addNotification("info", `🔴 ALPACA SELL ${symbol}`, `Ordre passé: ${qty} actions`);
+    res.json({ orderId: order.id, status: order.status });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
