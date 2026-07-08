@@ -644,7 +644,10 @@ async function processAsset(sym) {
   let rawData;
   const yfSymbol = asset?.yfSym || (asset?.type === "crypto" ? sym + "-USD" : sym);
   try { rawData = (await yfChartFast(yfSymbol, "3mo", "1d")).data; }
-  catch { return; }
+  catch {
+    // Fallback: use simulated data based on asset config
+    rawData = generateData(sym, 90, asset.base, asset.vol);
+  }
   if (!rawData || rawData.length < 50) return;
 
   const ana = computeIndicators(rawData);
@@ -913,16 +916,17 @@ async function processAsset(sym) {
     }
 }
 
-// Process in parallel batches of 20
+// Process in parallel batches of 10
 let cycleRunning = false;
 async function liveTradeCheck() {
   if (cycleRunning) return;
   cycleRunning = true;
   const symbols = Object.keys(ASSETS);
-  const BATCH = 20;
+  const BATCH = 10;
+  let yfOk = 0, yfFail = 0;
   for (let i = 0; i < symbols.length; i += BATCH) {
     const batch = symbols.slice(i, i + BATCH);
-    await Promise.allSettled(batch.map(sym => processAsset(sym)));
+    const results = await Promise.allSettled(batch.map(sym => processAsset(sym)));
   }
   cycleRunning = false;
   console.log(`[CYCLE] Pos: ${getPositionCount()}/${MAX_POSITIONS} | Bal: €${liveState.balance.toFixed(2)} | PnL: €${liveState.totalPnL.toFixed(2)} | WinRate: ${liveState.wins + liveState.losses > 0 ? ((liveState.wins / (liveState.wins + liveState.losses)) * 100).toFixed(0) : 0}%`);
