@@ -482,11 +482,11 @@ function addPnL(pnl) {
 
 // ─── ADAPTIVE RISK SYSTEM ───
 function getRiskProfile(equity) {
-  if (equity <= 50) return { name: "micro", maxRiskPct: 0.10, maxPos: 3, maxPerGroup: 2, maxHoldMin: 480, maxDrawdownPct: 0.30, cooldownMin: 60 };
-  if (equity <= 200) return { name: "small", maxRiskPct: 0.08, maxPos: 3, maxPerGroup: 2, maxHoldMin: 360, maxDrawdownPct: 0.25, cooldownMin: 45 };
-  if (equity <= 500) return { name: "medium", maxRiskPct: 0.06, maxPos: 5, maxPerGroup: 3, maxHoldMin: 240, maxDrawdownPct: 0.20, cooldownMin: 30 };
-  if (equity <= 2000) return { name: "large", maxRiskPct: 0.04, maxPos: 5, maxPerGroup: 3, maxHoldMin: 180, maxDrawdownPct: 0.15, cooldownMin: 20 };
-  return { name: "big", maxRiskPct: 0.03, maxPos: 8, maxPerGroup: 4, maxHoldMin: 120, maxDrawdownPct: 0.10, cooldownMin: 15 };
+  if (equity <= 50) return { name: "micro", maxRiskPct: 0.30, maxPos: 5, maxPerGroup: 2, maxHoldMin: 480, maxDrawdownPct: 0.50, cooldownMin: 30 };
+  if (equity <= 200) return { name: "small", maxRiskPct: 0.25, maxPos: 5, maxPerGroup: 3, maxHoldMin: 360, maxDrawdownPct: 0.45, cooldownMin: 25 };
+  if (equity <= 500) return { name: "medium", maxRiskPct: 0.20, maxPos: 5, maxPerGroup: 3, maxHoldMin: 240, maxDrawdownPct: 0.40, cooldownMin: 20 };
+  if (equity <= 2000) return { name: "large", maxRiskPct: 0.15, maxPos: 6, maxPerGroup: 3, maxHoldMin: 180, maxDrawdownPct: 0.35, cooldownMin: 15 };
+  return { name: "big", maxRiskPct: 0.10, maxPos: 8, maxPerGroup: 4, maxHoldMin: 120, maxDrawdownPct: 0.30, cooldownMin: 10 };
 }
 
 // ── CORRELATION GROUPS (max 2 per group) ──

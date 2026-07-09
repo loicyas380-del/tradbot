@@ -5,7 +5,7 @@ import {
 
 const YF_H = { "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/125.0" };
 
-async function yfChart(symbol, range, interval = "1h") {
+async function yfChart(symbol, range = "3mo", interval = "1h") {
   const res = await fetch(`https://query1.finance.yahoo.com/v8/finance/chart/${symbol}?range=${range}&interval=${interval}`, { headers: YF_H, signal: AbortSignal.timeout(15000) });
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
   const json = await res.json();
@@ -72,7 +72,6 @@ function backtestAsset(sym, rawData, config, initialBalance) {
 
     if (!rsiVal || !macdCurr || !ema20Val || !ema50Val || !atrVal) continue;
 
-    // EXIT
     for (let p = positions.length - 1; p >= 0; p--) {
       const pos = positions[p];
       pos.bars++;
@@ -106,17 +105,10 @@ function backtestAsset(sym, rawData, config, initialBalance) {
       }
     }
 
-    // COOLDOWN
     if (cooldown > 0) { cooldown--; continue; }
-
-    // MAX DRAWDOWN STOP — pause if drawdown too high
-    const currentDD = (peak - balance) / peak;
-    if (currentDD > (maxDrawdownPct || 0.20)) continue;
-
-    // CONSECUTIVE LOSS STOP — pause after 5 losses in a row
+    if (maxDrawdownPct && (peak - balance) / peak > maxDrawdownPct) continue;
     if (consecutiveLosses >= 5) { cooldown = 10; continue; }
 
-    // ENTRY
     if (positions.length < maxPos && balance > 3) {
       const longTrend = ema20Val > ema50Val;
       const shortTrend = ema20Val < ema50Val;
@@ -159,25 +151,22 @@ function backtestAsset(sym, rawData, config, initialBalance) {
   const totalTrades = wins + losses;
   const winRate = totalTrades > 0 ? ((wins / totalTrades) * 100).toFixed(1) : 0;
   const pnlPct = ((balance - initialBalance) / initialBalance * 100).toFixed(1);
-  const pnlEur = +(balance - initialBalance).toFixed(2);
 
-  return { sym, totalTrades, wins, losses, winRate: +winRate, pnlPct: +pnlPct, pnlEur, finalBalance: balance, maxDrawdown: +(maxDrawdown * 100).toFixed(1) };
+  return { sym, totalTrades, wins, losses, winRate: +winRate, pnlPct: +pnlPct, finalBalance: balance, maxDrawdown: +(maxDrawdown * 100).toFixed(1) };
 }
 
-// ══════════════════════════════════════════════════════════════
-// STRATÉGIES AVEC PROTECTION DRAWDOWN
-// ══════════════════════════════════════════════════════════════
+// Test different risk/drawdown combos
 const STRATEGIES = [
-  { name: "Sélectif: DD20%", riskPct: 0.10, tpMultiplier: 0.6, slMultiplier: 1.2, trailMultiplier: 0.35, maxHoldBars: 8, maxPositions: 3, maxDrawdownPct: 0.20, cooldownBars: 8 },
-  { name: "Sélectif: DD30%", riskPct: 0.10, tpMultiplier: 0.6, slMultiplier: 1.2, trailMultiplier: 0.35, maxHoldBars: 8, maxPositions: 3, maxDrawdownPct: 0.30, cooldownBars: 5 },
-  { name: "Sélectif: DD25%", riskPct: 0.12, tpMultiplier: 0.6, slMultiplier: 1.2, trailMultiplier: 0.35, maxHoldBars: 8, maxPositions: 3, maxDrawdownPct: 0.25, cooldownBars: 6 },
-  { name: "Sélectif: DD15%", riskPct: 0.08, tpMultiplier: 0.6, slMultiplier: 1.2, trailMultiplier: 0.35, maxHoldBars: 8, maxPositions: 2, maxDrawdownPct: 0.15, cooldownBars: 10 },
-  { name: "Sélectif: Risk8_DD20", riskPct: 0.08, tpMultiplier: 0.6, slMultiplier: 1.2, trailMultiplier: 0.35, maxHoldBars: 8, maxPositions: 3, maxDrawdownPct: 0.20, cooldownBars: 8 },
-  { name: "Sélectif: Risk6_DD20", riskPct: 0.06, tpMultiplier: 0.6, slMultiplier: 1.2, trailMultiplier: 0.35, maxHoldBars: 8, maxPositions: 3, maxDrawdownPct: 0.20, cooldownBars: 8 },
-  { name: "Sélectif: Risk5_DD15", riskPct: 0.05, tpMultiplier: 0.6, slMultiplier: 1.2, trailMultiplier: 0.35, maxHoldBars: 8, maxPositions: 2, maxDrawdownPct: 0.15, cooldownBars: 10 },
-  { name: "Agro: Risk15_DD30", riskPct: 0.15, tpMultiplier: 0.6, slMultiplier: 1.2, trailMultiplier: 0.35, maxHoldBars: 8, maxPositions: 3, maxDrawdownPct: 0.30, cooldownBars: 5 },
-  { name: "Agro: Risk12_DD25", riskPct: 0.12, tpMultiplier: 0.6, slMultiplier: 1.2, trailMultiplier: 0.35, maxHoldBars: 8, maxPositions: 3, maxDrawdownPct: 0.25, cooldownBars: 6 },
-  { name: "Safe: Risk3_DD10", riskPct: 0.03, tpMultiplier: 0.6, slMultiplier: 1.2, trailMultiplier: 0.35, maxHoldBars: 8, maxPositions: 2, maxDrawdownPct: 0.10, cooldownBars: 15 },
+  { name: "Safe: R5_DD15", riskPct: 0.05, tpMultiplier: 0.6, slMultiplier: 1.2, trailMultiplier: 0.35, maxHoldBars: 8, maxPositions: 2, maxDrawdownPct: 0.15, cooldownBars: 10 },
+  { name: "Low: R8_DD20", riskPct: 0.08, tpMultiplier: 0.6, slMultiplier: 1.2, trailMultiplier: 0.35, maxHoldBars: 8, maxPositions: 3, maxDrawdownPct: 0.20, cooldownBars: 8 },
+  { name: "Mid: R10_DD25", riskPct: 0.10, tpMultiplier: 0.6, slMultiplier: 1.2, trailMultiplier: 0.35, maxHoldBars: 8, maxPositions: 3, maxDrawdownPct: 0.25, cooldownBars: 6 },
+  { name: "Med: R12_DD30", riskPct: 0.12, tpMultiplier: 0.6, slMultiplier: 1.2, trailMultiplier: 0.35, maxHoldBars: 8, maxPositions: 3, maxDrawdownPct: 0.30, cooldownBars: 5 },
+  { name: "High: R15_DD35", riskPct: 0.15, tpMultiplier: 0.6, slMultiplier: 1.2, trailMultiplier: 0.35, maxHoldBars: 8, maxPositions: 4, maxDrawdownPct: 0.35, cooldownBars: 4 },
+  { name: "Agro: R18_DD40", riskPct: 0.18, tpMultiplier: 0.6, slMultiplier: 1.2, trailMultiplier: 0.35, maxHoldBars: 8, maxPositions: 4, maxDrawdownPct: 0.40, cooldownBars: 3 },
+  { name: "Bold: R20_DD45", riskPct: 0.20, tpMultiplier: 0.6, slMultiplier: 1.2, trailMultiplier: 0.35, maxHoldBars: 8, maxPositions: 5, maxDrawdownPct: 0.45, cooldownBars: 3 },
+  { name: "Yolo: R25_DD50", riskPct: 0.25, tpMultiplier: 0.6, slMultiplier: 1.2, trailMultiplier: 0.35, maxHoldBars: 8, maxPositions: 5, maxDrawdownPct: 0.50, cooldownBars: 2 },
+  { name: "NoLim: R15_NoDD", riskPct: 0.15, tpMultiplier: 0.6, slMultiplier: 1.2, trailMultiplier: 0.35, maxHoldBars: 8, maxPositions: 3, maxDrawdownPct: 0, cooldownBars: 0 },
+  { name: "NoLim: R20_NoDD", riskPct: 0.20, tpMultiplier: 0.6, slMultiplier: 1.2, trailMultiplier: 0.35, maxHoldBars: 8, maxPositions: 3, maxDrawdownPct: 0, cooldownBars: 0 },
 ];
 
 const ASSETS = [
@@ -203,20 +192,25 @@ const ASSETS = [
   { sym: "GC=F", name: "Gold" },
 ];
 
-async function runYear(yearName, range) {
-  console.log(`\n━━━━━━ ${yearName} (${range}) ━━━━━━`);
+async function main() {
+  console.log("═══════════════════════════════════════════════════════════════");
+  console.log("  BACKTEST 3 MOIS — 100€ — DIFFÉRENTS NIVEAUX DE RISQUE");
+  console.log("═══════════════════════════════════════════════════════════════\n");
 
+  console.log("Fetching 3 mois 1h...\n");
   const allData = {};
   for (const asset of ASSETS) {
     try {
-      allData[asset.sym] = await yfChart(asset.sym, range, "1h");
+      allData[asset.sym] = await yfChart(asset.sym, "3mo", "1h");
       await new Promise(r => setTimeout(r, 250));
     } catch (err) {}
   }
+  console.log(`Data: ${Object.keys(allData).length} assets.\n`);
 
   const results = [];
+
   for (const strat of STRATEGIES) {
-    let balance = 40;
+    let balance = 100;
     let totalWins = 0, totalLosses = 0;
     let maxDD = 0;
 
@@ -233,48 +227,34 @@ async function runYear(yearName, range) {
 
     const totalTrades = totalWins + totalLosses;
     const winRate = totalTrades > 0 ? ((totalWins / totalTrades) * 100).toFixed(1) : 0;
-    const pnlPct = ((balance - 40) / 40 * 100).toFixed(1);
+    const pnlPct = ((balance - 100) / 100 * 100).toFixed(1);
 
-    results.push({ name: strat.name, finalBalance: balance, pnlPct: +pnlPct, winRate: +winRate, totalTrades, maxDD: +maxDD });
+    results.push({ name: strat.name, risk: (strat.riskPct * 100).toFixed(0), dd: strat.maxDrawdownPct ? (strat.maxDrawdownPct * 100).toFixed(0) : "∞", finalBalance: balance, pnlPct: +pnlPct, winRate: +winRate, totalTrades, maxDD: +maxDD });
   }
 
   results.sort((a, b) => b.finalBalance - a.finalBalance);
 
-  console.log(`  ${"Stratégie".padEnd(22)} | ${"Final".padStart(10)} | ${"Profit".padStart(8)} | ${"WR".padStart(6)} | ${"Trades".padStart(6)} | ${"MaxDD".padStart(6)}`);
-  console.log(`  ${"─".repeat(22)}─┼─${"─".repeat(10)}─┼─${"─".repeat(8)}─┼─${"─".repeat(6)}─┼─${"─".repeat(6)}─┼─${"─".repeat(6)}`);
-  for (const r of results) {
-    const ddEmoji = r.maxDD <= 15 ? "🟢" : r.maxDD <= 25 ? "🟡" : r.maxDD <= 35 ? "🟠" : "🔴";
-    console.log(`  ${r.name.padEnd(22)} | ${r.finalBalance.toFixed(2).padStart(10)}€ | ${("+" + r.pnlPct + "%").padStart(8)} | ${(r.winRate + "%").padStart(6)} | ${String(r.totalTrades).padStart(6)} | ${ddEmoji}${r.maxDD}%`);
+  console.log("═══════════════════════════════════════════════════════════════");
+  console.log("  CLASSEMENT PAR PROFIT");
+  console.log("═══════════════════════════════════════════════════════════════");
+  console.log(`  ${"Rang".padStart(4)} | ${"Stratégie".padEnd(18)} | ${"Risk".padStart(4)} | ${"DD Max".padStart(6)} | ${"Final".padStart(10)} | ${"Profit".padStart(8)} | ${"WR".padStart(6)} | ${"Trades".padStart(6)}`);
+  console.log(`  ${"─".repeat(4)}─┼─${"─".repeat(18)}─┼─${"─".repeat(4)}─┼─${"─".repeat(6)}─┼─${"─".repeat(10)}─┼─${"─".repeat(8)}─┼─${"─".repeat(6)}─┼─${"─".repeat(6)}`);
+
+  for (let i = 0; i < results.length; i++) {
+    const r = results[i];
+    const ddEmoji = r.maxDD <= 10 ? "🟢" : r.maxDD <= 25 ? "🟡" : r.maxDD <= 40 ? "🟠" : "🔴";
+    console.log(`  ${String(i + 1).padStart(4)} | ${r.name.padEnd(18)} | ${(r.risk + "%").padStart(4)} | ${(r.dd + "%").padStart(6)} | ${(r.finalBalance.toFixed(2) + "€").padStart(10)} | ${("+" + r.pnlPct + "%").padStart(8)} | ${(r.winRate + "%").padStart(6)} | ${String(r.totalTrades).padStart(6)} ${ddEmoji}`);
   }
 
-  return { year: yearName, results };
-}
-
-async function main() {
-  console.log("═══════════════════════════════════════════════════════════════");
-  console.log("  BACKTEST 3 ANNÉES — STRATÉGIES AVEC PROTECTION DRAWDOWN");
-  console.log("  TP 0.6×ATR | SL 1.2×ATR | Trail 0.35×ATR | 40€ → ???");
-  console.log("═══════════════════════════════════════════════════════════════");
-
-  const r1 = await runYear("6 Mois", "6mo");
-  const r2 = await runYear("1 An", "1y");
-  const r3 = await runYear("2 Ans", "2y");
-
-  // Find best overall (highest profit with DD < 25%)
-  const allResults = [...r1.results, ...r2.results, ...r3.results];
-  const safe = allResults.filter(r => r.maxDD <= 25);
-  const bestSafe = safe.sort((a, b) => b.pnlPct - a.pnlPct)[0];
-
+  // Find best balance between profit and DD
+  const balanced = results.filter(r => r.maxDD <= 30).sort((a, b) => b.pnlPct - a.pnlPct)[0];
   console.log("\n═══════════════════════════════════════════════════════════════");
-  console.log("  🏆 MEILLEURE STRATÉGIE SÉCURISÉE (DD ≤ 25%)");
+  console.log("  🏆 MEILLEUR ÉQUILIBRE (DD ≤ 30%)");
   console.log("═══════════════════════════════════════════════════════════════");
-  if (bestSafe) {
-    console.log(`  Nom: ${bestSafe.name}`);
-    console.log(`  Profit moyen: +${bestSafe.pnlPct}%`);
-    console.log(`  Max Drawdown: ${bestSafe.maxDD}%`);
-    console.log(`  Win Rate: ${bestSafe.winRate}%`);
-  } else {
-    console.log("  Aucune stratégie avec DD ≤ 25% trouvée");
+  if (balanced) {
+    console.log(`  ${balanced.name}`);
+    console.log(`  100€ → ${balanced.finalBalance.toFixed(2)}€ (+${balanced.pnlPct}%)`);
+    console.log(`  Max DD: ${balanced.maxDD}% | WR: ${balanced.winRate}% | ${balanced.totalTrades} trades`);
   }
   console.log("═══════════════════════════════════════════════════════════════\n");
 }
