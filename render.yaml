@@ -1,0 +1,13 @@
+# Blueprint Render — https://render.com/docs/blueprint-spec
+# Note : data-api.binance.vision est utilisé pour les données de marché,
+# accessible depuis toutes les régions Render (y compris US).
+services:
+  - type: web
+    name: tradbot
+    runtime: node
+    plan: free
+    region: frankfurt
+    buildCommand: npm install
+    startCommand: npm start
+    healthCheckPath: /api/status
+    autoDeploy: true

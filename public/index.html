@@ -1,0 +1,421 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TradBot v2 — Paper Trading</title>
+<style>
+  :root {
+    --surface-1: #fcfcfb;
+    --page: #f9f9f7;
+    --ink-1: #0b0b0b;
+    --ink-2: #52514e;
+    --ink-muted: #898781;
+    --grid: #e1e0d9;
+    --baseline: #c3c2b7;
+    --border: rgba(11,11,11,0.10);
+    --series-1: #2a78d6;
+    --good: #006300;
+    --good-badge: #0ca30c;
+    --critical: #d03b3b;
+    --warning: #fab219;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --surface-1: #1a1a19;
+      --page: #0d0d0d;
+      --ink-1: #ffffff;
+      --ink-2: #c3c2b7;
+      --ink-muted: #898781;
+      --grid: #2c2c2a;
+      --baseline: #383835;
+      --border: rgba(255,255,255,0.10);
+      --series-1: #3987e5;
+      --good: #0ca30c;
+      --good-badge: #0ca30c;
+      --critical: #d03b3b;
+      --warning: #fab219;
+    }
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+    background: var(--page);
+    color: var(--ink-1);
+    min-height: 100vh;
+    padding: 20px;
+  }
+  .wrap { max-width: 1100px; margin: 0 auto; display: flex; flex-direction: column; gap: 16px; }
+
+  header { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+  header h1 { font-size: 20px; font-weight: 700; }
+  .badge {
+    font-size: 11px; font-weight: 700; letter-spacing: 0.06em;
+    padding: 3px 8px; border-radius: 999px; text-transform: uppercase;
+  }
+  .badge-paper { background: var(--series-1); color: #fff; }
+  .badge-live { background: var(--good-badge); color: #fff; }
+  .badge-paused { background: var(--critical); color: #fff; }
+  header .spacer { flex: 1; }
+  .btn {
+    font-size: 12px; font-weight: 600; padding: 6px 14px; border-radius: 8px;
+    border: 1px solid var(--border); background: var(--surface-1); color: var(--ink-1);
+    cursor: pointer;
+  }
+  .btn:hover { border-color: var(--series-1); }
+
+  .banner {
+    font-size: 13px; padding: 10px 14px; border-radius: 10px;
+    background: var(--surface-1); border: 1px solid var(--border); color: var(--ink-2);
+  }
+  .banner strong { color: var(--ink-1); }
+
+  .tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; }
+  .tile {
+    background: var(--surface-1); border: 1px solid var(--border); border-radius: 12px;
+    padding: 14px 16px;
+  }
+  .tile .label { font-size: 11px; font-weight: 600; color: var(--ink-muted); text-transform: uppercase; letter-spacing: 0.05em; }
+  .tile .value { font-size: 24px; font-weight: 700; margin-top: 4px; }
+  .tile .sub { font-size: 12px; color: var(--ink-2); margin-top: 2px; }
+  .up { color: var(--good); }
+  .down { color: var(--critical); }
+
+  .card {
+    background: var(--surface-1); border: 1px solid var(--border); border-radius: 12px;
+    padding: 16px;
+  }
+  .card h2 { font-size: 13px; font-weight: 700; color: var(--ink-2); margin-bottom: 12px; text-transform: uppercase; letter-spacing: 0.04em; }
+
+  #chartbox { position: relative; }
+  #chart { width: 100%; height: 260px; display: block; }
+  #tooltip {
+    position: absolute; pointer-events: none; display: none;
+    background: var(--surface-1); border: 1px solid var(--border); border-radius: 8px;
+    padding: 6px 10px; font-size: 12px; box-shadow: 0 2px 10px rgba(0,0,0,0.15);
+    white-space: nowrap; z-index: 5;
+  }
+  #tooltip .t-val { font-weight: 700; }
+  #tooltip .t-time { color: var(--ink-muted); font-size: 11px; }
+
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th {
+    text-align: left; font-size: 11px; font-weight: 600; color: var(--ink-muted);
+    text-transform: uppercase; letter-spacing: 0.04em; padding: 6px 8px;
+    border-bottom: 1px solid var(--grid);
+  }
+  td { padding: 7px 8px; border-bottom: 1px solid var(--grid); font-variant-numeric: tabular-nums; }
+  tr:last-child td { border-bottom: none; }
+  .num { text-align: right; }
+  th.num { text-align: right; }
+  .empty { color: var(--ink-muted); font-size: 13px; padding: 12px 4px; }
+
+  .chips { display: flex; gap: 8px; flex-wrap: wrap; }
+  .chip {
+    display: flex; align-items: center; gap: 6px; font-size: 12px;
+    border: 1px solid var(--border); border-radius: 999px; padding: 4px 10px;
+    font-variant-numeric: tabular-nums;
+  }
+  .dot { width: 8px; height: 8px; border-radius: 50%; }
+  .dot-ok { background: var(--good-badge); }
+  .dot-stale { background: var(--warning); }
+  .dot-error { background: var(--critical); }
+
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  @media (max-width: 800px) { .grid2 { grid-template-columns: 1fr; } }
+
+  .bt-metrics { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 10px; margin-bottom: 10px; }
+  .bt-metrics .m { font-size: 12px; color: var(--ink-2); }
+  .bt-metrics .m b { display: block; font-size: 16px; color: var(--ink-1); font-variant-numeric: tabular-nums; }
+  .verdict { font-size: 13px; padding: 8px 12px; border-radius: 8px; border: 1px solid var(--border); }
+
+  footer { font-size: 12px; color: var(--ink-muted); text-align: center; padding: 8px 0 20px; line-height: 1.6; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>TradBot v2</h1>
+    <span class="badge badge-paper">Paper</span>
+    <span id="status-badge" class="badge badge-live">Actif</span>
+    <span class="spacer"></span>
+    <button class="btn" id="btn-pause">⏸ Pause</button>
+    <button class="btn" id="btn-resume">▶ Reprendre</button>
+  </header>
+
+  <div class="banner" id="banner">
+    <strong>Argent 100&nbsp;% fictif.</strong> Ce bot trade en simulation sur données réelles Binance.
+    Décisions à la clôture de chaque bougie 1h — la patience fait partie de la stratégie.
+  </div>
+
+  <div class="tiles">
+    <div class="tile"><div class="label">Équité</div><div class="value" id="t-equity">—</div><div class="sub" id="t-equity-sub"></div></div>
+    <div class="tile"><div class="label">Cash disponible</div><div class="value" id="t-cash">—</div><div class="sub" id="t-cash-sub"></div></div>
+    <div class="tile"><div class="label">PnL réalisé</div><div class="value" id="t-pnl">—</div><div class="sub" id="t-pnl-sub"></div></div>
+    <div class="tile"><div class="label">Aujourd'hui</div><div class="value" id="t-day">—</div><div class="sub">depuis 00:00 UTC</div></div>
+  </div>
+
+  <div class="card">
+    <h2>Courbe d'équité</h2>
+    <div id="chartbox">
+      <svg id="chart" preserveAspectRatio="none"></svg>
+      <div id="tooltip"></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Marchés suivis</h2>
+    <div class="chips" id="chips"></div>
+  </div>
+
+  <div class="grid2">
+    <div class="card">
+      <h2>Positions ouvertes</h2>
+      <div id="positions"></div>
+    </div>
+    <div class="card">
+      <h2>Derniers trades</h2>
+      <div id="trades"></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Dernier backtest (données réelles, frais inclus)</h2>
+    <div id="backtest"><div class="empty">Aucun rapport — lance <code>npm run backtest</code>.</div></div>
+  </div>
+
+  <footer>
+    Bot de démonstration en paper trading — aucun ordre réel n'est passé.<br>
+    Un backtest, même honnête, ne prédit pas la performance future.
+  </footer>
+</div>
+
+<script>
+const $ = (id) => document.getElementById(id);
+const fmt = (x, d = 2) => x == null ? "—" : x.toLocaleString("fr-FR", { minimumFractionDigits: d, maximumFractionDigits: d });
+const fmtSign = (x, d = 2) => x == null ? "—" : (x >= 0 ? "+" : "") + fmt(x, d);
+const cls = (x) => x == null ? "" : x >= 0 ? "up" : "down";
+
+let equityPoints = [];
+
+async function jget(url) {
+  const r = await fetch(url);
+  if (!r.ok) throw new Error(url + " " + r.status);
+  return r.json();
+}
+
+function renderStatus(s) {
+  const badge = $("status-badge");
+  if (s.paused) {
+    badge.className = "badge badge-paused";
+    badge.textContent = "En pause";
+    $("banner").innerHTML = "<strong>Bot en pause :</strong> " + (s.pausedReason || "pause manuelle") +
+      ". Les sorties (stops) restent actives, aucune nouvelle entrée.";
+  } else {
+    badge.className = "badge badge-live";
+    badge.textContent = "Actif";
+  }
+
+  $("t-equity").textContent = fmt(s.equity) + " USDT";
+  const delta = s.equity - s.initialCash;
+  const el = $("t-equity-sub");
+  el.textContent = fmtSign(delta) + " (" + fmtSign(delta / s.initialCash * 100) + " %) depuis le départ";
+  el.className = "sub " + cls(delta);
+
+  $("t-cash").textContent = fmt(s.cash) + " USDT";
+  $("t-cash-sub").textContent = s.positions.length + " position" + (s.positions.length > 1 ? "s" : "") + " ouverte" + (s.positions.length > 1 ? "s" : "");
+
+  $("t-pnl").textContent = fmtSign(s.totalPnl) + " USDT";
+  $("t-pnl").className = "value " + cls(s.totalPnl);
+  $("t-pnl-sub").textContent = s.wins + " gagnés / " + s.losses + " perdus";
+
+  const dayPnl = s.equity - (s.day?.startEquity ?? s.equity);
+  $("t-day").textContent = fmtSign(dayPnl) + " USDT";
+  $("t-day").className = "value " + cls(dayPnl);
+
+  // Chips marchés
+  $("chips").innerHTML = s.universe.map((sym) => {
+    const st = s.dataStatus[sym] || "…";
+    const dotCls = st === "ok" ? "dot-ok" : st === "stale" ? "dot-stale" : "dot-error";
+    const price = s.prices[sym];
+    return '<span class="chip"><span class="dot ' + dotCls + '"></span>' + sym.replace("USDT", "") +
+      (price != null ? " · " + fmt(price, price < 1 ? 4 : 2) + " $" : "") + "</span>";
+  }).join("");
+
+  // Positions
+  if (s.positions.length === 0) {
+    $("positions").innerHTML = '<div class="empty">Aucune position — le bot attend un signal (' + (s.strategy && s.strategy.label ? s.strategy.label : "stratégie") + ", en " + s.interval + ').</div>';
+  } else {
+    $("positions").innerHTML = "<table><thead><tr><th>Paire</th><th class='num'>Entrée</th><th class='num'>Stop</th><th class='num'>Prix</th><th class='num'>PnL latent</th></tr></thead><tbody>" +
+      s.positions.map((p) => "<tr><td>" + p.symbol.replace("USDT", "") + "</td>" +
+        "<td class='num'>" + fmt(p.entryPrice, 4) + "</td>" +
+        "<td class='num'>" + fmt(p.stopPrice, 4) + "</td>" +
+        "<td class='num'>" + fmt(p.lastPrice, 4) + "</td>" +
+        "<td class='num " + cls(p.uPnl) + "'>" + fmtSign(p.uPnl) + " (" + fmtSign(p.uPnlPct) + " %)</td></tr>").join("") +
+      "</tbody></table>";
+  }
+}
+
+function renderTrades(trades) {
+  if (!trades.length) {
+    $("trades").innerHTML = '<div class="empty">Aucun trade clôturé pour l\'instant.</div>';
+    return;
+  }
+  $("trades").innerHTML = "<table><thead><tr><th>Paire</th><th>Sortie</th><th class='num'>PnL</th><th class='num'>%</th></tr></thead><tbody>" +
+    trades.slice(0, 12).map((t) => "<tr><td>" + t.symbol.replace("USDT", "") + "</td>" +
+      "<td>" + (t.reason === "STOP" ? "Stop" : "Signal") + "</td>" +
+      "<td class='num " + cls(t.pnl) + "'>" + fmtSign(t.pnl) + "</td>" +
+      "<td class='num " + cls(t.pnlPct) + "'>" + fmtSign(t.pnlPct) + " %</td></tr>").join("") +
+    "</tbody></table>";
+}
+
+function renderBacktest(bt) {
+  if (!bt || !bt.metrics) return;
+  const m = bt.metrics;
+  const beat = m.beatsBuyHold;
+  $("backtest").innerHTML =
+    '<div class="bt-metrics">' +
+      '<div class="m">Rendement<b class="' + cls(m.totalReturnPct) + '">' + fmtSign(m.totalReturnPct) + ' %</b></div>' +
+      '<div class="m">Buy &amp; hold<b class="' + cls(m.buyHoldPct) + '">' + fmtSign(m.buyHoldPct) + ' %</b></div>' +
+      '<div class="m">Max drawdown<b>-' + fmt(m.maxDrawdownPct) + ' %</b></div>' +
+      '<div class="m">Trades<b>' + m.trades + '</b></div>' +
+      '<div class="m">Win rate<b>' + fmt(m.winRatePct, 1) + ' %</b></div>' +
+      '<div class="m">Frais payés<b>' + fmt(m.totalFees) + ' USDT</b></div>' +
+    '</div>' +
+    '<div class="verdict">' + (beat
+      ? "✔ Sur cette période, la stratégie a fait mieux que le buy-and-hold (" + fmtSign(m.totalReturnPct) + " % vs " + fmtSign(m.buyHoldPct) + " %)."
+      : "✘ Sur cette période, la stratégie n'a pas battu le buy-and-hold.") +
+      " Période : " + m.periodStart.slice(0, 10) + " → " + m.periodEnd.slice(0, 10) + ". Performance passée ≠ future.</div>";
+}
+
+// ─── Graphique d'équité (SVG + crosshair) ───
+function renderChart() {
+  const svg = $("chart");
+  const box = svg.getBoundingClientRect();
+  const W = box.width, H = box.height;
+  svg.setAttribute("viewBox", "0 0 " + W + " " + H);
+  svg.innerHTML = "";
+  if (equityPoints.length < 2) {
+    const t = document.createElementNS("http://www.w3.org/2000/svg", "text");
+    t.setAttribute("x", W / 2); t.setAttribute("y", H / 2);
+    t.setAttribute("text-anchor", "middle");
+    t.setAttribute("fill", getCss("--ink-muted"));
+    t.setAttribute("font-size", "13");
+    t.textContent = "La courbe apparaîtra après quelques minutes de collecte.";
+    svg.appendChild(t);
+    return;
+  }
+
+  const PAD = { l: 56, r: 12, t: 12, b: 24 };
+  const xs = equityPoints.map((p) => p.t);
+  const ys = equityPoints.map((p) => p.equity);
+  const xmin = xs[0], xmax = xs[xs.length - 1];
+  let ymin = Math.min(...ys), ymax = Math.max(...ys);
+  if (ymax === ymin) { ymax += 1; ymin -= 1; }
+  const yspan = ymax - ymin;
+  ymin -= yspan * 0.08; ymax += yspan * 0.08;
+
+  const X = (t) => PAD.l + (t - xmin) / (xmax - xmin) * (W - PAD.l - PAD.r);
+  const Y = (v) => PAD.t + (ymax - v) / (ymax - ymin) * (H - PAD.t - PAD.b);
+  const el = (tag, attrs) => {
+    const e = document.createElementNS("http://www.w3.org/2000/svg", tag);
+    for (const [k, v] of Object.entries(attrs)) e.setAttribute(k, v);
+    return e;
+  };
+
+  // Grille horizontale (3 lignes) + labels
+  for (let i = 0; i <= 3; i++) {
+    const v = ymin + (ymax - ymin) * i / 3;
+    const y = Y(v);
+    svg.appendChild(el("line", { x1: PAD.l, x2: W - PAD.r, y1: y, y2: y, stroke: getCss("--grid"), "stroke-width": 1 }));
+    const t = el("text", { x: PAD.l - 8, y: y + 4, "text-anchor": "end", fill: getCss("--ink-muted"), "font-size": 11 });
+    t.textContent = fmt(v, 0);
+    svg.appendChild(t);
+  }
+  // Labels temps (3 ticks)
+  for (let i = 0; i <= 2; i++) {
+    const tt = xmin + (xmax - xmin) * i / 2;
+    const d = new Date(tt);
+    const t = el("text", {
+      x: X(tt), y: H - 6, "text-anchor": i === 0 ? "start" : i === 2 ? "end" : "middle",
+      fill: getCss("--ink-muted"), "font-size": 11,
+    });
+    t.textContent = d.toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit" }) + " " + d.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" });
+    svg.appendChild(t);
+  }
+
+  // Aire + ligne
+  const pts = equityPoints.map((p) => X(p.t).toFixed(1) + "," + Y(p.equity).toFixed(1)).join(" ");
+  const areaD = "M" + X(xs[0]).toFixed(1) + "," + Y(ys[0]).toFixed(1) + " L" + pts.replaceAll(" ", " L") + " L" + X(xmax).toFixed(1) + "," + (H - PAD.b) + " L" + X(xmin).toFixed(1) + "," + (H - PAD.b) + " Z";
+  svg.appendChild(el("path", { d: areaD, fill: getCss("--series-1"), opacity: 0.08 }));
+  svg.appendChild(el("polyline", { points: pts, fill: "none", stroke: getCss("--series-1"), "stroke-width": 2, "stroke-linejoin": "round" }));
+
+  // Couche interaction : crosshair + tooltip
+  const hoverLine = el("line", { y1: PAD.t, y2: H - PAD.b, stroke: getCss("--baseline"), "stroke-width": 1, "stroke-dasharray": "3,3", visibility: "hidden" });
+  const hoverDot = el("circle", { r: 4, fill: getCss("--series-1"), stroke: getCss("--surface-1"), "stroke-width": 2, visibility: "hidden" });
+  svg.appendChild(hoverLine);
+  svg.appendChild(hoverDot);
+
+  svg.onmousemove = (ev) => {
+    const rect = svg.getBoundingClientRect();
+    const mx = ev.clientX - rect.left;
+    const target = xmin + (mx - PAD.l) / (W - PAD.l - PAD.r) * (xmax - xmin);
+    let best = 0, bd = Infinity;
+    for (let i = 0; i < equityPoints.length; i++) {
+      const d = Math.abs(equityPoints[i].t - target);
+      if (d < bd) { bd = d; best = i; }
+    }
+    const p = equityPoints[best];
+    const px = X(p.t), py = Y(p.equity);
+    hoverLine.setAttribute("x1", px); hoverLine.setAttribute("x2", px);
+    hoverLine.setAttribute("visibility", "visible");
+    hoverDot.setAttribute("cx", px); hoverDot.setAttribute("cy", py);
+    hoverDot.setAttribute("visibility", "visible");
+    const tip = $("tooltip");
+    const d = new Date(p.t);
+    tip.innerHTML = '<div class="t-val">' + fmt(p.equity) + ' USDT</div><div class="t-time">' +
+      d.toLocaleDateString("fr-FR") + " " + d.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" }) + "</div>";
+    tip.style.display = "block";
+    tip.style.left = Math.min(px + 12, W - 130) + "px";
+    tip.style.top = Math.max(py - 40, 4) + "px";
+  };
+  svg.onmouseleave = () => {
+    hoverLine.setAttribute("visibility", "hidden");
+    hoverDot.setAttribute("visibility", "hidden");
+    $("tooltip").style.display = "none";
+  };
+}
+
+function getCss(name) {
+  return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+}
+
+async function refresh() {
+  try {
+    const [status, trades, equity] = await Promise.all([
+      jget("/api/status"), jget("/api/trades"), jget("/api/equity"),
+    ]);
+    renderStatus(status);
+    renderTrades(trades.trades);
+    equityPoints = equity.points;
+    renderChart();
+  } catch (err) {
+    $("status-badge").className = "badge badge-paused";
+    $("status-badge").textContent = "Hors ligne";
+  }
+}
+
+async function loadBacktest() {
+  try { renderBacktest(await jget("/api/backtest")); } catch {}
+}
+
+$("btn-pause").onclick = async () => { await fetch("/api/pause", { method: "POST" }); refresh(); };
+$("btn-resume").onclick = async () => { await fetch("/api/resume", { method: "POST" }); refresh(); };
+window.addEventListener("resize", renderChart);
+
+refresh();
+loadBacktest();
+setInterval(refresh, 5000);
+</script>
+</body>
+</html>
