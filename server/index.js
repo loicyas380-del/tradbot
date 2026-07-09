@@ -121,47 +121,126 @@ function generateData(symbol, days, basePrice, vol) {
 }
 
 const ASSETS = {
-  // ── TOP CRYPTO (backtested winners) ──
-  "WLD":   { name: "Worldcoin",    base: 2,      vol: 0.07, type: "crypto", volatile: true },
-  "FET":   { name: "Fetch.ai",    base: 2.2,    vol: 0.05, type: "crypto", volatile: true },
-  "NEAR":  { name: "NEAR",        base: 5.5,    vol: 0.045, type: "crypto" },
-  "DOT":   { name: "Polkadot",    base: 7,      vol: 0.04, type: "crypto" },
-  "ICP":   { name: "ICP",         base: 12,     vol: 0.045, type: "crypto" },
-  "VET":   { name: "VeChain",     base: 0.035,  vol: 0.05, type: "crypto" },
-  "FIL":   { name: "Filecoin",    base: 5.5,    vol: 0.045, type: "crypto" },
-  "KAVA":  { name: "Kava",        base: 0.7,    vol: 0.05, type: "crypto" },
-  "OP":    { name: "Optimism",    base: 2.3,    vol: 0.045, type: "crypto" },
-  "SOL":   { name: "Solana",      base: 150,    vol: 0.035, type: "crypto" },
-  "ADA":   { name: "Cardano",     base: 0.45,   vol: 0.035, type: "crypto" },
-  "LINK":  { name: "Chainlink",   base: 14,     vol: 0.03, type: "crypto" },
-  "BTC":   { name: "Bitcoin",     base: 62000,  vol: 0.025, type: "crypto" },
-  "LTC":   { name: "Litecoin",    base: 85,     vol: 0.03, type: "crypto" },
-  "XRP":   { name: "XRP",         base: 0.52,   vol: 0.03, type: "crypto" },
-  "RENDER":{ name: "Render",      base: 8,      vol: 0.045, type: "crypto" },
-  "SEI":   { name: "Sei",         base: 0.5,    vol: 0.055, type: "crypto" },
-  "ALGO":  { name: "Algorand",    base: 0.18,   vol: 0.05, type: "crypto" },
-  "HBAR":  { name: "Hedera",      base: 0.08,   vol: 0.04, type: "crypto" },
-  "ETH":   { name: "Ethereum",    base: 3400,   vol: 0.03, type: "crypto" },
-  "BNB":   { name: "BNB",         base: 590,    vol: 0.02, type: "crypto" },
-  "ATOM":  { name: "Cosmos",      base: 8,      vol: 0.04, type: "crypto" },
-  "ARB":   { name: "Arbitrum",    base: 1.1,    vol: 0.045, type: "crypto" },
-  // ── STOCKS (backtested winners) ──
-  "PLTR":  { name: "Palantir",    base: 25,     vol: 0.035, type: "stock" },
-  "META":  { name: "Meta",        base: 500,    vol: 0.018, type: "stock" },
-  "NVDA":  { name: "NVIDIA",      base: 120,    vol: 0.022, type: "stock" },
-  "AAPL":  { name: "Apple",       base: 195,    vol: 0.015, type: "stock" },
-  "GOOGL": { name: "Alphabet",    base: 175,    vol: 0.014, type: "stock" },
-  "MSFT":  { name: "Microsoft",   base: 420,    vol: 0.012, type: "stock" },
-  // ── COMMODITIES ──
-  "GOLD":  { name: "Or",          base: 2400,   vol: 0.012, type: "commodity", yfSym: "GC=F" },
-  "SILVER":{ name: "Argent",      base: 30,     vol: 0.02, type: "commodity", yfSym: "SI=F" },
-  // ── FOREX ──
-  "AUDUSD":{ name: "AUD/USD",     base: 0.65,   vol: 0.007, type: "forex", yfSym: "AUDUSD=X" },
-  "USDJPY":{ name: "USD/JPY",     base: 161,    vol: 0.006, type: "forex", yfSym: "USDJPY=X" },
+  // ═══ CRYPTO MAJEURS ═══
+  "BTC":   { name: "Bitcoin",     base: 62000,  vol: 0.025, type: "crypto", yfSym: "BTC-USD" },
+  "ETH":   { name: "Ethereum",    base: 3400,   vol: 0.03, type: "crypto", yfSym: "ETH-USD" },
+  "SOL":   { name: "Solana",      base: 150,    vol: 0.035, type: "crypto", yfSym: "SOL-USD" },
+  "XRP":   { name: "XRP",         base: 0.52,   vol: 0.03, type: "crypto", yfSym: "XRP-USD" },
+  "ADA":   { name: "Cardano",     base: 0.45,   vol: 0.035, type: "crypto", yfSym: "ADA-USD" },
+  "DOGE":  { name: "Dogecoin",    base: 0.15,   vol: 0.04, type: "crypto", yfSym: "DOGE-USD" },
+  "AVAX":  { name: "Avalanche",   base: 35,     vol: 0.04, type: "crypto", yfSym: "AVAX-USD" },
+  "DOT":   { name: "Polkadot",    base: 7,      vol: 0.04, type: "crypto", yfSym: "DOT-USD" },
+  "LINK":  { name: "Chainlink",   base: 14,     vol: 0.03, type: "crypto", yfSym: "LINK-USD" },
+  "LTC":   { name: "Litecoin",    base: 85,     vol: 0.03, type: "crypto", yfSym: "LTC-USD" },
+  "ATOM":  { name: "Cosmos",      base: 8,      vol: 0.04, type: "crypto", yfSym: "ATOM-USD" },
+  "FIL":   { name: "Filecoin",    base: 5.5,    vol: 0.045, type: "crypto", yfSym: "FIL-USD" },
+  "NEAR":  { name: "NEAR",        base: 5.5,    vol: 0.045, type: "crypto", yfSym: "NEAR-USD" },
+  "ARB":   { name: "Arbitrum",    base: 1.1,    vol: 0.045, type: "crypto", yfSym: "ARB-USD" },
+  "OP":    { name: "Optimism",    base: 2.3,    vol: 0.045, type: "crypto", yfSym: "OP-USD" },
+  "SUI":   { name: "Sui",         base: 1.5,    vol: 0.05, type: "crypto", yfSym: "SUI-USD" },
+  "SEI":   { name: "Sei",         base: 0.5,    vol: 0.055, type: "crypto", yfSym: "SEI-USD" },
+  "INJ":   { name: "Injective",   base: 25,     vol: 0.05, type: "crypto", yfSym: "INJ-USD" },
+  "FET":   { name: "Fetch.ai",    base: 2.2,    vol: 0.05, type: "crypto", yfSym: "FET-USD" },
+  "RENDER":{ name: "Render",      base: 8,      vol: 0.045, type: "crypto", yfSym: "RENDER-USD" },
+  "TIA":   { name: "Celestia",    base: 10,     vol: 0.05, type: "crypto", yfSym: "TIA-USD" },
+  "WLD":   { name: "Worldcoin",   base: 2,      vol: 0.07, type: "crypto", yfSym: "WLD-USD" },
+  "ONDO":  { name: "Ondo",        base: 1.2,    vol: 0.05, type: "crypto", yfSym: "ONDO-USD" },
+  "SHIB":  { name: "Shiba Inu",   base: 0.000025, vol: 0.06, type: "crypto", yfSym: "SHIB-USD" },
+  "BONK":  { name: "Bonk",        base: 0.00002, vol: 0.07, type: "crypto", yfSym: "BONK-USD" },
+  // ═══ CRYPTO DEFI ═══
+  "ENA":   { name: "Ethena",      base: 0.8,    vol: 0.06, type: "crypto", yfSym: "ENA-USD" },
+  "AAVE":  { name: "Aave",        base: 100,    vol: 0.04, type: "crypto", yfSym: "AAVE-USD" },
+  "MKR":   { name: "Maker",       base: 1500,   vol: 0.035, type: "crypto", yfSym: "MKR-USD" },
+  "CRV":   { name: "Curve",       base: 0.5,    vol: 0.05, type: "crypto", yfSym: "CRV-USD" },
+  "LDO":   { name: "Lido",        base: 2,      vol: 0.05, type: "crypto", yfSym: "LDO-USD" },
+  "PENDLE":{ name: "Pendle",      base: 5,      vol: 0.06, type: "crypto", yfSym: "PENDLE-USD" },
+  "DYDX":  { name: "dYdX",        base: 2,      vol: 0.05, type: "crypto", yfSym: "DYDX-USD" },
+  "SUSHI": { name: "SushiSwap",   base: 1.2,    vol: 0.05, type: "crypto", yfSym: "SUSHI-USD" },
+  "KNC":   { name: "Kyber",       base: 0.7,    vol: 0.05, type: "crypto", yfSym: "KNC-USD" },
+  // ═══ CRYPTO LAYER 1 ═══
+  "HBAR":  { name: "Hedera",      base: 0.08,   vol: 0.04, type: "crypto", yfSym: "HBAR-USD" },
+  "XLM":   { name: "Stellar",     base: 0.11,   vol: 0.04, type: "crypto", yfSym: "XLM-USD" },
+  "ALGO":  { name: "Algorand",    base: 0.18,   vol: 0.05, type: "crypto", yfSym: "ALGO-USD" },
+  "FLOW":  { name: "Flow",        base: 0.8,    vol: 0.05, type: "crypto", yfSym: "FLOW-USD" },
+  "ICP":   { name: "ICP",         base: 12,     vol: 0.045, type: "crypto", yfSym: "ICP-USD" },
+  "MINA":  { name: "Mina",        base: 0.5,    vol: 0.05, type: "crypto", yfSym: "MINA-USD" },
+  "EGLD":  { name: "MultiversX",  base: 40,     vol: 0.04, type: "crypto", yfSym: "EGLD-USD" },
+  "BSV":   { name: "Bitcoin SV",  base: 50,     vol: 0.04, type: "crypto", yfSym: "BSV-USD" },
+  "BCH":   { name: "Bitcoin Cash", base: 400,    vol: 0.035, type: "crypto", yfSym: "BCH-USD" },
+  "ETC":   { name: "Ethereum C",  base: 25,     vol: 0.04, type: "crypto", yfSym: "ETC-USD" },
+  "DASH":  { name: "Dash",        base: 25,     vol: 0.04, type: "crypto", yfSym: "DASH-USD" },
+  "XMR":   { name: "Monero",      base: 160,    vol: 0.03, type: "crypto", yfSym: "XMR-USD" },
+  "ZEC":   { name: "Zcash",       base: 25,     vol: 0.04, type: "crypto", yfSym: "ZEC-USD" },
+  "RUNE":  { name: "THORChain",   base: 5,      vol: 0.05, type: "crypto", yfSym: "RUNE-USD" },
+  "FTM":   { name: "Fantom",      base: 0.7,    vol: 0.05, type: "crypto", yfSym: "FTM-USD" },
+  "VET":   { name: "VeChain",     base: 0.035,  vol: 0.05, type: "crypto", yfSym: "VET-USD" },
+  "KAVA":  { name: "Kava",        base: 0.7,    vol: 0.05, type: "crypto", yfSym: "KAVA-USD" },
+  "BAND":  { name: "Band Protocol", base: 1.5,  vol: 0.05, type: "crypto", yfSym: "BAND-USD" },
+  "SCRT":  { name: "Secret",      base: 0.5,    vol: 0.05, type: "crypto", yfSym: "SCRT-USD" },
+  "THETA": { name: "Theta",       base: 1.5,    vol: 0.05, type: "crypto", yfSym: "THETA-USD" },
+  // ═══ STOCKS TECH ═══
+  "NVDA":  { name: "NVIDIA",      base: 120,    vol: 0.022, type: "stock", yfSym: "NVDA" },
+  "TSLA":  { name: "Tesla",       base: 180,    vol: 0.03, type: "stock", yfSym: "TSLA" },
+  "AAPL":  { name: "Apple",       base: 195,    vol: 0.015, type: "stock", yfSym: "AAPL" },
+  "MSFT":  { name: "Microsoft",   base: 420,    vol: 0.012, type: "stock", yfSym: "MSFT" },
+  "AMZN":  { name: "Amazon",      base: 185,    vol: 0.018, type: "stock", yfSym: "AMZN" },
+  "META":  { name: "Meta",        base: 500,    vol: 0.018, type: "stock", yfSym: "META" },
+  "GOOGL": { name: "Alphabet",    base: 175,    vol: 0.014, type: "stock", yfSym: "GOOGL" },
+  "AMD":   { name: "AMD",         base: 150,    vol: 0.025, type: "stock", yfSym: "AMD" },
+  "PLTR":  { name: "Palantir",    base: 25,     vol: 0.035, type: "stock", yfSym: "PLTR" },
+  "COIN":  { name: "Coinbase",    base: 220,    vol: 0.035, type: "stock", yfSym: "COIN" },
+  "MSTR":  { name: "MicroStrategy", base: 1500, vol: 0.04, type: "stock", yfSym: "MSTR" },
+  "SOFI":  { name: "SoFi",        base: 8,      vol: 0.03, type: "stock", yfSym: "SOFI" },
+  "SNAP":  { name: "Snapchat",    base: 12,     vol: 0.03, type: "stock", yfSym: "SNAP" },
+  "PINS":  { name: "Pinterest",   base: 35,     vol: 0.025, type: "stock", yfSym: "PINS" },
+  "UBER":  { name: "Uber",        base: 75,     vol: 0.02, type: "stock", yfSym: "UBER" },
+  "ABNB":  { name: "Airbnb",      base: 150,    vol: 0.02, type: "stock", yfSym: "ABNB" },
+  "DDOG":  { name: "Datadog",     base: 120,    vol: 0.025, type: "stock", yfSym: "DDOG" },
+  "NET":   { name: "Cloudflare",  base: 90,     vol: 0.025, type: "stock", yfSym: "NET" },
+  "CRWD":  { name: "CrowdStrike", base: 300,    vol: 0.02, type: "stock", yfSym: "CRWD" },
+  "AVGO":  { name: "Broadcom",    base: 1500,   vol: 0.02, type: "stock", yfSym: "AVGO" },
+  "MRVL":  { name: "Marvell",     base: 75,     vol: 0.03, type: "stock", yfSym: "MRVL" },
+  "NFLX":  { name: "Netflix",     base: 650,    vol: 0.018, type: "stock", yfSym: "NFLX" },
+  "DIS":   { name: "Disney",      base: 100,    vol: 0.018, type: "stock", yfSym: "DIS" },
+  "INTC":  { name: "Intel",       base: 30,     vol: 0.025, type: "stock", yfSym: "INTC" },
+  // ═══ STOCKS FINANCE ═══
+  "JPM":   { name: "JP Morgan",   base: 200,    vol: 0.012, type: "stock", yfSym: "JPM" },
+  "V":     { name: "Visa",        base: 280,    vol: 0.01, type: "stock", yfSym: "V" },
+  "MA":    { name: "Mastercard",  base: 460,    vol: 0.01, type: "stock", yfSym: "MA" },
+  "BAC":   { name: "BofA",        base: 38,     vol: 0.015, type: "stock", yfSym: "BAC" },
+  "GS":    { name: "Goldman",     base: 450,    vol: 0.015, type: "stock", yfSym: "GS" },
+  "MS":    { name: "Morgan Stanley", base: 90,  vol: 0.015, type: "stock", yfSym: "MS" },
+  // ═══ STOCKS SANTÉ ═══
+  "LLY":   { name: "Eli Lilly",   base: 800,    vol: 0.015, type: "stock", yfSym: "LLY" },
+  "NVO":   { name: "Novo Nordisk", base: 130,   vol: 0.018, type: "stock", yfSym: "NVO" },
+  "PFE":   { name: "Pfizer",      base: 28,     vol: 0.015, type: "stock", yfSym: "PFE" },
+  "ABBV":  { name: "AbbVie",      base: 170,    vol: 0.012, type: "stock", yfSym: "ABBV" },
+  "AMGN":  { name: "Amgen",       base: 280,    vol: 0.015, type: "stock", yfSym: "AMGN" },
+  // ═══ STOCKS CONSO ═══
+  "WMT":   { name: "Walmart",     base: 65,     vol: 0.01, type: "stock", yfSym: "WMT" },
+  "NKE":   { name: "Nike",        base: 95,     vol: 0.02, type: "stock", yfSym: "NKE" },
+  "SBUX":  { name: "Starbucks",   base: 80,     vol: 0.018, type: "stock", yfSym: "SBUX" },
+  // ═══ STOCKS ÉNERGIE ═══
+  "XOM":   { name: "Exxon",       base: 110,    vol: 0.012, type: "stock", yfSym: "XOM" },
+  "CVX":   { name: "Chevron",     base: 155,    vol: 0.012, type: "stock", yfSym: "CVX" },
+  "VLO":   { name: "Valero",      base: 150,    vol: 0.02, type: "stock", yfSym: "VLO" },
+  // ═══ FOREX ═══
   "EURUSD":{ name: "EUR/USD",     base: 1.09,   vol: 0.005, type: "forex", yfSym: "EURUSD=X" },
   "GBPUSD":{ name: "GBP/USD",     base: 1.27,   vol: 0.006, type: "forex", yfSym: "GBPUSD=X" },
-  // ── INDICES ──
-  "DJI":   { name: "Dow Jones",   base: 40000,  vol: 0.008, type: "index", yfSym: "^DJI" },
+  "USDJPY":{ name: "USD/JPY",     base: 161,    vol: 0.006, type: "forex", yfSym: "USDJPY=X" },
+  "AUDUSD":{ name: "AUD/USD",     base: 0.65,   vol: 0.007, type: "forex", yfSym: "AUDUSD=X" },
+  "USDCAD":{ name: "USD/CAD",     base: 1.36,   vol: 0.005, type: "forex", yfSym: "USDCAD=X" },
+  "USDCHF":{ name: "USD/CHF",     base: 0.88,   vol: 0.005, type: "forex", yfSym: "USDCHF=X" },
+  "NZDUSD":{ name: "NZD/USD",     base: 0.6,    vol: 0.007, type: "forex", yfSym: "NZDUSD=X" },
+  "EURGBP":{ name: "EUR/GBP",     base: 0.86,   vol: 0.004, type: "forex", yfSym: "EURGBP=X" },
+  "EURJPY":{ name: "EUR/JPY",     base: 175,    vol: 0.006, type: "forex", yfSym: "EURJPY=X" },
+  "GBPJPY":{ name: "GBP/JPY",     base: 205,    vol: 0.007, type: "forex", yfSym: "GBPJPY=X" },
+  // ═══ MATIÈRES PREMIÈRES ═══
+  "GOLD":  { name: "Or",          base: 2400,   vol: 0.012, type: "commodity", yfSym: "GC=F" },
+  "SILVER":{ name: "Argent",      base: 30,     vol: 0.02, type: "commodity", yfSym: "SI=F" },
+  "OIL":   { name: "Pétrole",     base: 75,     vol: 0.025, type: "commodity", yfSym: "CL=F" },
+  "GAS":   { name: "Gaz",         base: 2.5,    vol: 0.04, type: "commodity", yfSym: "NG=F" },
+  "COPPER":{ name: "Cuivre",      base: 4.2,    vol: 0.015, type: "commodity", yfSym: "HG=F" },
 };
 
 function isStockMarketOpen() {
@@ -513,180 +592,98 @@ function computeIndicators(rawData) {
   return {
     closes, highs, lows, volumes, len,
     rsi: RSI.calculate({ values: closes, period: 14 }),
-    macd: MACD.calculate({ values: closes, fastPeriod: 12, slowPeriod: 26, signalPeriod: 9, SimpleMAOscillator: false, SimpleMASignal: false }),
-    bb: BollingerBands.calculate({ values: closes, period: 20, stdDev: 2 }),
+    ema5: EMA.calculate({ values: closes, period: 5 }),
     ema20: EMA.calculate({ values: closes, period: 20 }),
     ema50: EMA.calculate({ values: closes, period: 50 }),
-    sma200: SMA.calculate({ values: closes, period: 200 }),
     atr: ATR.calculate({ high: highs, low: lows, close: closes, period: 14 }),
-    stoch: Stochastic.calculate({ high: highs, low: lows, close: closes, period: 14, signalPeriod: 3 }),
     volSma20: SMA.calculate({ values: volumes, period: 20 }),
-    // NEW: ADX for trend strength
-    adx: ADX.calculate({ high: highs, low: lows, close: closes, period: 14 }),
-    // NEW: VWAP
-    vwap: calculateVWAP(rawData),
   };
 }
 
 function analyzeDay(ana, i) {
-  const { closes, volumes, rsi, macd, bb, ema20, ema50, sma200, atr, stoch, volSma20, len, adx, vwap } = ana;
+  const { closes, volumes, rsi, ema5, ema20, ema50, atr, volSma20, len } = ana;
   const price = closes[i];
+  const prevPrice = closes[i - 1];
+  if (!prevPrice) return null;
+
   const rI = i - (len - rsi.length);
-  const mI = i - (len - macd.length);
-  const bI = i - (len - bb.length);
+  const e5I = i - (len - ema5.length);
   const e20I = i - (len - ema20.length);
   const e50I = i - (len - ema50.length);
-  const s200I = i - (len - sma200.length);
   const aI = i - (len - atr.length);
-  const sI = i - (len - stoch.length);
   const vI = i - (len - volSma20.length);
-  const adxI = i - (len - adx.length);
-  const vwapI = i - (len - vwap.length);
 
   const rsiVal = getVal(rsi, rI);
-  const macdCurr = getVal(macd, mI);
-  const macdPrev = getVal(macd, mI - 1);
-  const bbVal = getVal(bb, bI);
+  const ema5Val = getVal(ema5, e5I);
   const ema20Val = getVal(ema20, e20I);
   const ema50Val = getVal(ema50, e50I);
-  const sma200Val = getVal(sma200, s200I);
   const atrVal = getVal(atr, aI);
-  const stochVal = getVal(stoch, sI);
-  const volNow = getVal(volumes, i);
-  const volPrev = getVal(volumes, i - 1);
   const volAvg = getVal(volSma20, vI);
-  // NEW: ADX and VWAP
-  const adxVal = getVal(adx, adxI);
-  const vwapVal = getVal(vwap, vwapI);
+  const volNow = getVal(volumes, i);
 
-  if (rsiVal == null || !macdCurr || !bbVal || !ema20Val || !ema50Val || !atrVal || !stochVal) return null;
+  if (rsiVal == null || !atrVal || !volAvg || !ema5Val) return null;
 
-  const bbPct = (price - bbVal.lower) / (bbVal.upper - bbVal.lower);
-  const volumeOk = volPrev && volAvg ? volPrev > volAvg * 0.7 : true;
-  const volumeSpike = volNow && volAvg ? volNow > volAvg * 1.8 : false;
+  const isBouncing = price > prevPrice;
+  const isFalling = price < prevPrice;
+  const volumeOK = volNow > volAvg * 0.4;
 
-  // RSI prev for momentum
-  const rsiPrev = getVal(rsi, rI - 1);
-  const rsiRising = rsiPrev != null && rsiVal > rsiPrev;
-  const rsiFalling = rsiPrev != null && rsiVal < rsiPrev;
+  // FILTRE VOLATILITÉ: ATR/price ratio
+  const atrRatio = atrVal / price;
+  if (atrRatio > 0.08) return null; // Trop volatile = skip
+  const volMultiplier = atrRatio > 0.05 ? 0.5 : 1.0;
 
-  // Stochastic
-  const stochD = stochVal.d;
+  // MARKET REGIME: utilisation EMA20/50
+  const trendUp = ema20Val > ema50Val;
+  const trendDown = ema20Val < ema50Val;
+  const priceAboveEMA = price > ema5Val;
 
-  // NEW: ADX trend strength
-  const adxDI = adxVal?.adx || 0;
-  const strongTrend = adxDI > 20; // Relaxed from 25 to 20
-  const weakTrend = adxDI < 20; // ADX < 20 = weak/choppy market
+  // LONG: RSI < 40 + bounce + volume + trend up
+  if (rsiVal < 40 && isBouncing && volumeOK && trendUp && priceAboveEMA) {
+    const slDist = atrVal * 1.0;
+    const tpDist = atrVal * 2.0;
+    return {
+      longSignal: true, shortSignal: false,
+      atr: atrVal,
+      tp: +(price + tpDist).toFixed(4),
+      sl: +(price - slDist).toFixed(4),
+      shortTp: 0, shortSl: 0,
+      price, volumeConfirm: true, volumeSpike: false,
+      rsi: rsiVal, bbPct: 0, stochK: 0,
+      ema20: ema20Val, ema50: ema50Val,
+      adx: 0, strongTrend: trendUp, weakTrend: false,
+      vwap: 0, aboveVWAP: true, belowVWAP: false,
+      longConfidence: 70, shortConfidence: 0,
+      longReasons: [`RSI${rsiVal.toFixed(0)}`, "Bounce", "Vol", "Trend↑"],
+      shortReasons: [],
+      longPassed: 4, shortPassed: 0,
+      volMultiplier,
+    };
+  }
 
-  // NEW: VWAP position
-  const aboveVWAP = price > vwapVal;
-  const belowVWAP = price < vwapVal;
+  // SHORT: RSI > 60 + fall + volume + trend down
+  if (rsiVal > 60 && isFalling && volumeOK && trendDown && !priceAboveEMA) {
+    const slDist = atrVal * 1.0;
+    const tpDist = atrVal * 2.0;
+    return {
+      longSignal: false, shortSignal: true,
+      atr: atrVal,
+      tp: 0, sl: 0,
+      shortTp: +(price - tpDist).toFixed(4),
+      shortSl: +(price + slDist).toFixed(4),
+      price, volumeConfirm: true, volumeSpike: false,
+      rsi: rsiVal, bbPct: 0, stochK: 0,
+      ema20: ema20Val, ema50: ema50Val,
+      adx: 0, strongTrend: trendDown, weakTrend: false,
+      vwap: 0, aboveVWAP: false, belowVWAP: true,
+      longConfidence: 0, shortConfidence: 70,
+      longReasons: [],
+      shortReasons: [`RSI${rsiVal.toFixed(0)}`, "Fall", "Vol", "Trend↓"],
+      longPassed: 0, shortPassed: 4,
+      volMultiplier,
+    };
+  }
 
-  // ═══════════════════════════════════════════════════════════════
-  // STRATEGY: TREND PULLBACK (proven approach) + ADX/VWAP
-  // Trade in direction of trend, enter on pullbacks
-  // ═══════════════════════════════════════════════════════════════
-
-  // ── LONG SETUP ──
-  const longTrend = ema20Val > ema50Val;
-  const longTrendStrong = longTrend && (sma200Val == null || price > sma200Val);
-  const longPullback = rsiVal < 50 && rsiVal > 30;
-  const longMomentum = macdCurr.histogram > 0 || (macdPrev && macdCurr.histogram > macdPrev.histogram);
-  const longSupport = bbPct < 0.5;
-  const longStochOK = stochVal.k < 60;
-  const longPriceAboveEMA = price > ema20Val;
-  // NEW: ADX and VWAP conditions
-  const longStrongTrend = strongTrend;
-  const longAboveVWAP = aboveVWAP;
-
-  const longChecklist = [
-    longTrend,
-    longPullback,
-    longMomentum,
-    longSupport,
-    longStochOK,
-    longPriceAboveEMA,
-    volumeOk,
-    longStrongTrend, // NEW
-    longAboveVWAP,   // NEW
-  ];
-  const longPassed = longChecklist.filter(Boolean).length;
-  const longReasons = [];
-  if (longTrend) longReasons.push("Trend↑");
-  if (longTrendStrong) longReasons.push("Strong↑");
-  if (longPullback) longReasons.push(`RSI${rsiVal.toFixed(0)}`);
-  if (longMomentum) longReasons.push("Mom↑");
-  if (longSupport) longReasons.push("BB low");
-  if (longStochOK) longReasons.push(`Stoch${stochVal.k.toFixed(0)}`);
-  if (longPriceAboveEMA) longReasons.push("AboveEMA");
-  if (volumeSpike) longReasons.push("VolSpike");
-  if (longStrongTrend) longReasons.push("ADX>25"); // NEW
-  if (longAboveVWAP) longReasons.push("AboveVWAP"); // NEW
-
-  // LONG signal: trend + pullback + momentum + (support or stoch) + (ADX or VWAP)
-  const longSignal = longTrend && longPullback && longMomentum && (longSupport || longStochOK) && longPriceAboveEMA && volumeOk && (longStrongTrend || longAboveVWAP);
-
-  // ── SHORT SETUP ──
-  const shortTrend = ema20Val < ema50Val;
-  const shortTrendStrong = shortTrend && (sma200Val == null || price < sma200Val);
-  const shortBounce = rsiVal > 50 && rsiVal < 70;
-  const shortMomentum = macdCurr.histogram < 0 || (macdPrev && macdCurr.histogram < macdPrev.histogram);
-  const shortResistance = bbPct > 0.5;
-  const shortStochOK = stochVal.k > 40;
-  const shortPriceBelowEMA = price < ema20Val;
-  // NEW: ADX and VWAP conditions
-  const shortStrongTrend = strongTrend;
-  const shortBelowVWAP = belowVWAP;
-
-  const shortChecklist = [
-    shortTrend,
-    shortBounce,
-    shortMomentum,
-    shortResistance,
-    shortStochOK,
-    shortPriceBelowEMA,
-    volumeOk,
-    shortStrongTrend, // NEW
-    shortBelowVWAP,   // NEW
-  ];
-  const shortPassed = shortChecklist.filter(Boolean).length;
-  const shortReasons = [];
-  if (shortTrend) shortReasons.push("Trend↓");
-  if (shortTrendStrong) shortReasons.push("Strong↓");
-  if (shortBounce) shortReasons.push(`RSI${rsiVal.toFixed(0)}`);
-  if (shortMomentum) shortReasons.push("Mom↓");
-  if (shortResistance) shortReasons.push("BB high");
-  if (shortStochOK) shortReasons.push(`Stoch${stochVal.k.toFixed(0)}`);
-  if (shortPriceBelowEMA) shortReasons.push("BelowEMA");
-  if (volumeSpike) shortReasons.push("VolSpike");
-  if (shortStrongTrend) shortReasons.push("ADX>25"); // NEW
-  if (shortBelowVWAP) shortReasons.push("BelowVWAP"); // NEW
-
-  const shortSignal = shortTrend && shortBounce && shortMomentum && (shortResistance || shortStochOK) && shortPriceBelowEMA && volumeOk && (shortStrongTrend || shortBelowVWAP);
-
-  // TP/SL based on ATR (V2: higher TP for bigger gains)
-  const tp = +(price + atrVal * 2.0).toFixed(4);
-  const sl = +(price - atrVal * 0.6).toFixed(4);
-  const shortTp = +(price - atrVal * 2.0).toFixed(4);
-  const shortSl = +(price + atrVal * 0.6).toFixed(4);
-
-  // Confidence = how many checklist items passed (out of 9 now)
-  const longConfidence = Math.round((longPassed / 9) * 100);
-  const shortConfidence = Math.round((shortPassed / 9) * 100);
-
-  return {
-    longSignal, shortSignal,
-    longConfidence, shortConfidence,
-    longReasons, shortReasons,
-    longPassed, shortPassed,
-    atr: atrVal, tp, sl, shortTp, shortSl,
-    price, volumeConfirm: volumeOk, volumeSpike,
-    rsi: rsiVal, bbPct, stochK: stochVal.k,
-    ema20: ema20Val, ema50: ema50Val,
-    // NEW: ADX and VWAP
-    adx: adxDI, strongTrend, weakTrend,
-    vwap: vwapVal, aboveVWAP, belowVWAP,
-  };
+  return null;
 }
 
 // ─── MULTI-TIMEFRAME TREND (weekly) ─────────────────────────

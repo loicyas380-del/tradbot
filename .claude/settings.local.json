@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git add *)",
+      "Bash(git commit -m 'snapshot: sauvegarde complete v1 avant rebuild v2 from scratch *)"
+    ]
+  }
+}
