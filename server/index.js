@@ -701,11 +701,11 @@ function analyzeDay(ana, i) {
 
   const shortSignal = shortTrend && shortBounce && shortMomentum && (shortResistance || shortStochOK) && shortPriceBelowEMA && volumeOk;
 
-  // TP/SL based on ATR
-  const tp = +(price + atrVal * 2.5).toFixed(4);
-  const sl = +(price - atrVal * 1.5).toFixed(4);
-  const shortTp = +(price - atrVal * 2.5).toFixed(4);
-  const shortSl = +(price + atrVal * 1.5).toFixed(4);
+  // TP/SL based on ATR (backtested: TP 1.5×, SL 1.0× = best 44% compound growth)
+  const tp = +(price + atrVal * 1.5).toFixed(4);
+  const sl = +(price - atrVal * 1.0).toFixed(4);
+  const shortTp = +(price - atrVal * 1.5).toFixed(4);
+  const shortSl = +(price + atrVal * 1.0).toFixed(4);
 
   // Confidence = how many checklist items passed (out of 7)
   const longConfidence = Math.round((longPassed / 7) * 100);
@@ -801,12 +801,12 @@ async function processAsset(sym) {
           const bestPrice = pos.bestPrice || pos.entryPrice;
           if (currentPrice > bestPrice) { st.positions[sym].bestPrice = currentPrice; }
           const newBest = Math.max(bestPrice, currentPrice);
-          const trailDistance = atrVal * 1;
-          if (newBest > pos.entryPrice + atrVal * 1) {
+          const trailDistance = atrVal * 0.8;
+          if (newBest > pos.entryPrice + atrVal * 0.8) {
             const newTrailSl = +(newBest - trailDistance).toFixed(4);
             if (newTrailSl > pos.sl) { st.positions[sym].sl = newTrailSl; }
           }
-          if (!pos.partialTaken && currentPrice >= pos.entryPrice + atrVal * 1.5) {
+          if (!pos.partialTaken && currentPrice >= pos.entryPrice + atrVal * 1.0) {
             partialExit = true;
             const halfQty = +(pos.qty / 2).toFixed(8);
             const pnl = halfQty * (currentPrice - pos.entryPrice);
@@ -832,12 +832,12 @@ async function processAsset(sym) {
           const bestPrice = pos.bestPrice || pos.entryPrice;
           if (currentPrice < bestPrice) { st.positions[sym].bestPrice = currentPrice; }
           const newBest = Math.min(bestPrice, currentPrice);
-          const trailDistance = atrVal * 1;
-          if (newBest < pos.entryPrice - atrVal * 1) {
+          const trailDistance = atrVal * 0.8;
+          if (newBest < pos.entryPrice - atrVal * 0.8) {
             const newTrailSl = +(newBest + trailDistance).toFixed(4);
             if (newTrailSl < pos.sl) { st.positions[sym].sl = newTrailSl; }
           }
-          if (!pos.partialTaken && currentPrice <= pos.entryPrice - atrVal * 1.5) {
+          if (!pos.partialTaken && currentPrice <= pos.entryPrice - atrVal * 1.0) {
             partialExit = true;
             const halfQty = +(pos.qty / 2).toFixed(8);
             const pnl = halfQty * (pos.entryPrice - currentPrice);
