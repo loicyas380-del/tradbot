@@ -5,7 +5,7 @@ import {
 
 const YF_H = { "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/125.0" };
 
-async function yfChart(symbol, range = "6mo", interval = "1d") {
+async function yfChart(symbol, range = "3mo", interval = "1h") {
   const res = await fetch(`https://query1.finance.yahoo.com/v8/finance/chart/${symbol}?range=${range}&interval=${interval}`, { headers: YF_H, signal: AbortSignal.timeout(15000) });
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
   const json = await res.json();
@@ -35,38 +35,31 @@ function computeIndicators(rawData) {
     macd: MACD.calculate({ values: closes, fastPeriod: 12, slowPeriod: 26, signalPeriod: 9, SimpleMAOscillator: false, SimpleMASignal: false }),
     bb: BollingerBands.calculate({ values: closes, period: 20, stdDev: 2 }),
     ema20: EMA.calculate({ values: closes, period: 20 }),
-    ema30: EMA.calculate({ values: closes, period: 30 }),
+    ema50: EMA.calculate({ values: closes, period: 50 }),
     atr: ATR.calculate({ high: highs, low: lows, close: closes, period: 14 }),
     stoch: Stochastic.calculate({ high: highs, low: lows, close: closes, period: 14, signalPeriod: 3 }),
     volSma20: SMA.calculate({ values: volumes, period: 20 }),
   };
 }
 
-// ═══════════════════════════════════════════════════════════════
-// STRATEGY: TREND + PULLBACK + TRAILING STOP avec COMPOUND
-// Proven approach: trade with trend, enter on dips, let winners run
-// ═══════════════════════════════════════════════════════════════
+// Max positions open simultaneously
 function backtestAsset(sym, rawData, config, initialBalance) {
-  if (!rawData || rawData.length < 30) return null;
+  if (!rawData || rawData.length < 40) return null;
   const ana = computeIndicators(rawData);
-  
-  const { tpMultiplier, slMultiplier, trailMultiplier, riskPct, maxHoldBars, breakeven, tripleConfirm, volFilter, useStoch } = config;
-  
+  const { tpMultiplier, slMultiplier, trailMultiplier, riskPct, maxHoldBars, maxPositions } = config;
   let balance = initialBalance;
   let peak = initialBalance;
-  let position = null;
-  const trades = [];
-  let maxDrawdown = 0;
-  let wins = 0, losses = 0;
+  let positions = [];
+  let maxDrawdown = 0, wins = 0, losses = 0;
+  const maxPos = maxPositions || 1;
 
-  for (let i = 25; i < ana.len; i++) {
-    const { closes, rsi, macd, bb, ema20, ema30, atr, stoch, volSma20, volumes } = ana;
+  for (let i = 35; i < ana.len; i++) {
+    const { closes, rsi, macd, ema20, ema50, atr, stoch, volSma20, volumes } = ana;
     const price = closes[i];
     const rI = i - (ana.len - rsi.length);
     const mI = i - (ana.len - macd.length);
-    const bI = i - (ana.len - bb.length);
     const e20I = i - (ana.len - ema20.length);
-    const e30I = i - (ana.len - ema30.length);
+    const e50I = i - (ana.len - ema50.length);
     const aI = i - (ana.len - atr.length);
     const sI = i - (ana.len - stoch.length);
     const vI = i - (ana.len - volSma20.length);
@@ -74,101 +67,88 @@ function backtestAsset(sym, rawData, config, initialBalance) {
     const rsiVal = getVal(rsi, rI);
     const macdCurr = getVal(macd, mI);
     const macdPrev = getVal(macd, mI - 1);
-    const bbVal = getVal(bb, bI);
     const ema20Val = getVal(ema20, e20I);
-    const ema30Val = getVal(ema30, e30I);
+    const ema50Val = getVal(ema50, e50I);
     const atrVal = getVal(atr, aI);
     const stochVal = getVal(stoch, sI);
-    const stochK = stochVal ? stochVal.k : undefined;
     const volNow = getVal(volumes, i);
     const volAvg = getVal(volSma20, vI);
 
-    if (!rsiVal || !macdCurr || !ema20Val || !ema30Val || !atrVal) continue;
-    const volumeOk = volNow && volAvg ? volNow > volAvg * 0.6 : true;
-    const volumeSpike = volNow && volAvg ? volNow > volAvg * 1.5 : false;
+    if (!rsiVal || !macdCurr || !ema20Val || !ema50Val || !atrVal) continue;
 
-    // ── CHECK EXIT FIRST ──
-    if (position) {
-      position.bars++;
-      let shouldExit = false;
-      let exitPrice = price;
-      let exitReason = "";
+    // EXIT existing positions
+    for (let p = positions.length - 1; p >= 0; p--) {
+      const pos = positions[p];
+      pos.bars++;
+      let shouldExit = false, exitPrice = price;
 
-      if (position.side === "LONG") {
-        if (price > position.bestPrice) position.bestPrice = price;
-        const trailSl = position.bestPrice - atrVal * trailMultiplier;
-        if (trailSl > position.sl) position.sl = trailSl;
-        // Breakeven: move SL to entry + small buffer
-        if (breakeven && price >= position.entryPrice + atrVal * breakeven && position.sl < position.entryPrice) {
-          position.sl = position.entryPrice + atrVal * 0.05;
-        }
-
-        if (price <= position.sl) { shouldExit = true; exitPrice = position.sl; exitReason = "SL"; }
-        else if (price >= position.tp) { shouldExit = true; exitPrice = position.tp; exitReason = "TP"; }
-        else if (position.bars >= maxHoldBars) { shouldExit = true; exitReason = "TIME"; }
-        // Trend reversal exit
-        else if (ema20Val < ema30Val) { shouldExit = true; exitReason = "TREND"; }
+      if (pos.side === "LONG") {
+        if (price > pos.bestPrice) pos.bestPrice = price;
+        const trailSl = pos.bestPrice - atrVal * trailMultiplier;
+        if (trailSl > pos.sl) pos.sl = trailSl;
+        if (price <= pos.sl) { shouldExit = true; exitPrice = pos.sl; }
+        else if (price >= pos.tp) { shouldExit = true; exitPrice = pos.tp; }
+        else if (pos.bars >= maxHoldBars) { shouldExit = true; }
+        else if (ema20Val < ema50Val) { shouldExit = true; }
       } else {
-        if (price < position.bestPrice) position.bestPrice = price;
-        const trailSl = position.bestPrice + atrVal * trailMultiplier;
-        if (trailSl < position.sl) position.sl = trailSl;
-        // Breakeven: move SL to entry - small buffer
-        if (breakeven && price <= position.entryPrice - atrVal * breakeven && position.sl > position.entryPrice) {
-          position.sl = position.entryPrice - atrVal * 0.05;
-        }
-
-        if (price >= position.sl) { shouldExit = true; exitPrice = position.sl; exitReason = "SL"; }
-        else if (price <= position.tp) { shouldExit = true; exitPrice = position.tp; exitReason = "TP"; }
-        else if (position.bars >= maxHoldBars) { shouldExit = true; exitReason = "TIME"; }
-        else if (ema20Val > ema30Val) { shouldExit = true; exitReason = "TREND"; }
+        if (price < pos.bestPrice) pos.bestPrice = price;
+        const trailSl = pos.bestPrice + atrVal * trailMultiplier;
+        if (trailSl < pos.sl) pos.sl = trailSl;
+        if (price >= pos.sl) { shouldExit = true; exitPrice = pos.sl; }
+        else if (price <= pos.tp) { shouldExit = true; exitPrice = pos.tp; }
+        else if (pos.bars >= maxHoldBars) { shouldExit = true; }
+        else if (ema20Val > ema50Val) { shouldExit = true; }
       }
 
       if (shouldExit) {
-        let pnl;
-        if (position.side === "LONG") pnl = position.qty * (exitPrice - position.entryPrice);
-        else pnl = position.qty * (position.entryPrice - exitPrice);
-        balance += position.cost + pnl;
+        const pnl = pos.side === "LONG" ? pos.qty * (exitPrice - pos.entryPrice) : pos.qty * (pos.entryPrice - exitPrice);
+        balance += pos.cost + pnl;
         if (pnl > 0) wins++; else losses++;
-        trades.push({ side: position.side, entry: position.entryPrice, exit: exitPrice, pnl, reason: exitReason, bars: position.bars });
-        position = null;
+        positions.splice(p, 1);
         if (balance > peak) peak = balance;
         const dd = (peak - balance) / peak;
         if (dd > maxDrawdown) maxDrawdown = dd;
       }
     }
 
-    // ── CHECK ENTRY ──
-    if (!position && balance > 10) {
-      const longTrend = ema20Val > ema30Val;
-      const shortTrend = ema20Val < ema30Val;
+    // ENTRY — open new positions if room
+    if (positions.length < maxPos && balance > 3) {
+      const longTrend = ema20Val > ema50Val;
+      const shortTrend = ema20Val < ema50Val;
+      const rsiRising = rsiVal > (getVal(rsi, rI - 1) || rsiVal);
+      const rsiFalling = rsiVal < (getVal(rsi, rI - 1) || rsiVal);
+      const macdRising = macdCurr.histogram > (macdPrev?.histogram || 0);
+      const macdFalling = macdCurr.histogram < (macdPrev?.histogram || 0);
 
-      // Helper: check if entry conditions are met
-      const stochOK_long = useStoch ? (stochK !== undefined && stochK < 30) : true;
-      const stochOK_short = useStoch ? (stochK !== undefined && stochK > 70) : true;
-      const tripleOK_long = tripleConfirm ? (macdCurr.histogram > macdPrev.histogram && rsiVal < 50 && price > ema20Val) : true;
-      const tripleOK_short = tripleConfirm ? (macdCurr.histogram < macdPrev.histogram && rsiVal > 50 && price < ema20Val) : true;
-
-      // LONG: uptrend + RSI pullback + MACD positive + optional filters
-      if (longTrend && rsiVal < 60 && rsiVal > 25 && macdCurr.histogram > 0 && volumeOk) {
-        if (volFilter && !volumeSpike) continue;
+      // LONG
+      if (longTrend && rsiVal < 65 && rsiVal > 25 && macdCurr.histogram > 0 && (rsiRising || macdRising)) {
         const riskAmount = balance * riskPct;
         const slDist = atrVal * slMultiplier;
-        const qty = +(riskAmount / slDist).toFixed(8);
-        const cost = qty * price;
-        if (cost < balance * 0.8) {
-          position = { side: "LONG", entryPrice: price, qty, cost, tp: price + atrVal * tpMultiplier, sl: price - slDist, bestPrice: price, bars: 0 };
+        let qty = +(riskAmount / slDist).toFixed(8);
+        let cost = qty * price;
+        // Cap to available balance
+        if (cost > balance * 0.9) {
+          qty = +((balance * 0.9) / price).toFixed(8);
+          cost = qty * price;
+        }
+        if (cost > 0 && cost <= balance) {
+          positions.push({ side: "LONG", entryPrice: price, qty, cost, tp: price + atrVal * tpMultiplier, sl: price - slDist, bestPrice: price, bars: 0 });
           balance -= cost;
         }
       }
-      // SHORT: downtrend + RSI bounce + MACD negative + optional filters
-      else if (shortTrend && rsiVal > 40 && rsiVal < 75 && macdCurr.histogram < 0 && volumeOk) {
-        if (volFilter && !volumeSpike) continue;
+      // SHORT
+      else if (shortTrend && rsiVal > 35 && rsiVal < 75 && macdCurr.histogram < 0 && (rsiFalling || macdFalling)) {
         const riskAmount = balance * riskPct;
         const slDist = atrVal * slMultiplier;
-        const qty = +(riskAmount / slDist).toFixed(8);
-        const cost = qty * price;
-        if (cost < balance * 0.8) {
-          position = { side: "SHORT", entryPrice: price, qty, cost, tp: price - atrVal * tpMultiplier, sl: price + slDist, bestPrice: price, bars: 0 };
+        let qty = +(riskAmount / slDist).toFixed(8);
+        let cost = qty * price;
+        // Cap to available balance
+        if (cost > balance * 0.9) {
+          qty = +((balance * 0.9) / price).toFixed(8);
+          cost = qty * price;
+        }
+        if (cost > 0 && cost <= balance) {
+          positions.push({ side: "SHORT", entryPrice: price, qty, cost, tp: price - atrVal * tpMultiplier, sl: price + slDist, bestPrice: price, bars: 0 });
           balance -= cost;
         }
       }
@@ -176,75 +156,72 @@ function backtestAsset(sym, rawData, config, initialBalance) {
   }
 
   // Close remaining
-  if (position) {
+  for (const pos of positions) {
     const lastPrice = ana.closes[ana.len - 1];
-    let pnl = position.side === "LONG" ? position.qty * (lastPrice - position.entryPrice) : position.qty * (position.entryPrice - lastPrice);
-    balance += position.cost + pnl;
+    const pnl = pos.side === "LONG" ? pos.qty * (lastPrice - pos.entryPrice) : pos.qty * (pos.entryPrice - lastPrice);
+    balance += pos.cost + pnl;
     if (pnl > 0) wins++; else losses++;
-    trades.push({ side: position.side, entry: position.entryPrice, exit: lastPrice, pnl, reason: "END", bars: position.bars });
   }
 
   const totalTrades = wins + losses;
   const winRate = totalTrades > 0 ? ((wins / totalTrades) * 100).toFixed(1) : 0;
-  const pnlPct = ((balance - initialBalance) / initialBalance * 100).toFixed(2);
   const pnlEur = +(balance - initialBalance).toFixed(2);
-  const finalBalance = balance;
+  const pnlPct = ((balance - initialBalance) / initialBalance * 100).toFixed(2);
 
-  return { sym, totalTrades, wins, losses, winRate: +winRate, pnlPct: +pnlPct, pnlEur, finalBalance, maxDrawdown: +(maxDrawdown * 100).toFixed(2) };
+  return { sym, totalTrades, wins, losses, winRate: +winRate, pnlPct: +pnlPct, pnlEur, finalBalance: balance, maxDrawdown: +(maxDrawdown * 100).toFixed(2) };
 }
 
-// ═══════════════════════════════════════════════════════════════
-// STRATEGY VARIATIONS TO TEST - ULTRA AGGRESSIF POUR 40€ → 250€
-// ═══════════════════════════════════════════════════════════════
+// ══════════════════════════════════════════════════════════════
+// STRATEGIES AGRESSIVES — 40€ → 250€ (525% en 3 mois)
+// ══════════════════════════════════════════════════════════════
 const STRATEGIES = [
-  // Final: Best proven strategies with compound from 40€
-  { name: "Best-Q: TinyTP+Trail", tpMultiplier: 0.5, slMultiplier: 1.0, trailMultiplier: 0.4, riskPct: 0.02, maxHoldBars: 10 },
-  { name: "Best-D: TightSL", tpMultiplier: 1.5, slMultiplier: 1.0, trailMultiplier: 0.8, riskPct: 0.02, maxHoldBars: 20 },
-  { name: "Best-V: MicroTP0.4", tpMultiplier: 0.4, slMultiplier: 1.0, trailMultiplier: 0.35, riskPct: 0.02, maxHoldBars: 8 },
-  { name: "Balanced-Q+BE", tpMultiplier: 0.5, slMultiplier: 1.0, trailMultiplier: 0.4, riskPct: 0.02, maxHoldBars: 10, breakeven: 0.3 },
-  { name: "Aggressive: Risk3%", tpMultiplier: 0.5, slMultiplier: 1.0, trailMultiplier: 0.4, riskPct: 0.03, maxHoldBars: 10 },
-  { name: "Conservative: Risk1%", tpMultiplier: 0.5, slMultiplier: 1.0, trailMultiplier: 0.4, riskPct: 0.01, maxHoldBars: 10 },
-  { name: "QuickWin: TP0.3", tpMultiplier: 0.3, slMultiplier: 1.0, trailMultiplier: 0.25, riskPct: 0.02, maxHoldBars: 6 },
-  { name: "WideTrail: Trail0.6", tpMultiplier: 0.5, slMultiplier: 1.0, trailMultiplier: 0.6, riskPct: 0.02, maxHoldBars: 12 },
-  { name: "SnapBack: TP0.6", tpMultiplier: 0.6, slMultiplier: 0.8, trailMultiplier: 0.4, riskPct: 0.02, maxHoldBars: 8 },
-  { name: "Risk4%: MaxGrowth", tpMultiplier: 0.5, slMultiplier: 1.0, trailMultiplier: 0.4, riskPct: 0.04, maxHoldBars: 10 },
+  // Final: focus on volatile assets only, aggressive sizing
+  { name: "FOCUS-1: Top5_Risk15%", riskPct: 0.15, tpMultiplier: 0.6, slMultiplier: 1.2, trailMultiplier: 0.35, maxHoldBars: 8, maxPositions: 3, topOnly: true },
+  { name: "FOCUS-2: Top5_Risk20%", riskPct: 0.20, tpMultiplier: 0.6, slMultiplier: 1.2, trailMultiplier: 0.35, maxHoldBars: 8, maxPositions: 3, topOnly: true },
+  { name: "FOCUS-3: Top5_Risk25%", riskPct: 0.25, tpMultiplier: 0.5, slMultiplier: 1.0, trailMultiplier: 0.3, maxHoldBars: 6, maxPositions: 4, topOnly: true },
+  { name: "FOCUS-4: All_Risk15%_TP0.6", riskPct: 0.15, tpMultiplier: 0.6, slMultiplier: 1.2, trailMultiplier: 0.35, maxHoldBars: 8, maxPositions: 3 },
+  { name: "FOCUS-5: All_Risk20%_TP0.5", riskPct: 0.20, tpMultiplier: 0.5, slMultiplier: 1.0, trailMultiplier: 0.3, maxHoldBars: 6, maxPositions: 4 },
+  { name: "FOCUS-6: All_Risk25%_TP0.4", riskPct: 0.25, tpMultiplier: 0.4, slMultiplier: 0.8, trailMultiplier: 0.25, maxHoldBars: 5, maxPositions: 5 },
+  { name: "FOCUS-7: Risk30%_TP0.5_5pos", riskPct: 0.30, tpMultiplier: 0.5, slMultiplier: 1.0, trailMultiplier: 0.3, maxHoldBars: 6, maxPositions: 5 },
+  { name: "FOCUS-8: Risk35%_TP0.4_5pos", riskPct: 0.35, tpMultiplier: 0.4, slMultiplier: 0.8, trailMultiplier: 0.25, maxHoldBars: 5, maxPositions: 5 },
+  { name: "FOCUS-9: Risk40%_TP0.5_3pos", riskPct: 0.40, tpMultiplier: 0.5, slMultiplier: 1.0, trailMultiplier: 0.3, maxHoldBars: 6, maxPositions: 3 },
+  { name: "FOCUS-10: Risk50%_TP0.3_3pos", riskPct: 0.50, tpMultiplier: 0.3, slMultiplier: 0.7, trailMultiplier: 0.2, maxHoldBars: 4, maxPositions: 3 },
 ];
 
 const ASSETS_TO_TEST = [
-  { sym: "BTC-USD", name: "Bitcoin" },
-  { sym: "ETH-USD", name: "Ethereum" },
-  { sym: "SOL-USD", name: "Solana" },
-  { sym: "DOGE-USD", name: "Dogecoin" },
-  { sym: "ADA-USD", name: "Cardano" },
-  { sym: "AVAX-USD", name: "Avalanche" },
-  { sym: "LINK-USD", name: "Chainlink" },
-  { sym: "DOT-USD", name: "Polkadot" },
-  { sym: "AAPL", name: "Apple" },
-  { sym: "MSFT", name: "Microsoft" },
-  { sym: "NVDA", name: "NVIDIA" },
-  { sym: "TSLA", name: "Tesla" },
-  { sym: "AMD", name: "AMD" },
-  { sym: "META", name: "Meta" },
-  { sym: "AMZN", name: "Amazon" },
-  { sym: "GOOGL", name: "Google" },
-  { sym: "EURUSD=X", name: "EUR/USD" },
-  { sym: "GBPUSD=X", name: "GBP/USD" },
-  { sym: "USDJPY=X", name: "USD/JPY" },
-  { sym: "GC=F", name: "Gold" },
+  { sym: "BTC-USD", name: "Bitcoin", volatile: false },
+  { sym: "ETH-USD", name: "Ethereum", volatile: false },
+  { sym: "SOL-USD", name: "Solana", volatile: true },
+  { sym: "DOGE-USD", name: "Dogecoin", volatile: true },
+  { sym: "ADA-USD", name: "Cardano", volatile: true },
+  { sym: "AVAX-USD", name: "Avalanche", volatile: true },
+  { sym: "LINK-USD", name: "Chainlink", volatile: true },
+  { sym: "DOT-USD", name: "Polkadot", volatile: true },
+  { sym: "AAPL", name: "Apple", volatile: false },
+  { sym: "MSFT", name: "Microsoft", volatile: false },
+  { sym: "NVDA", name: "NVIDIA", volatile: true },
+  { sym: "TSLA", name: "Tesla", volatile: true },
+  { sym: "AMD", name: "AMD", volatile: true },
+  { sym: "META", name: "Meta", volatile: false },
+  { sym: "AMZN", name: "Amazon", volatile: false },
+  { sym: "GOOGL", name: "Google", volatile: false },
+  { sym: "EURUSD=X", name: "EUR/USD", volatile: false },
+  { sym: "GBPUSD=X", name: "GBP/USD", volatile: false },
+  { sym: "USDJPY=X", name: "USD/JPY", volatile: false },
+  { sym: "GC=F", name: "Gold", volatile: false },
 ];
 
 async function runBacktest() {
   console.log("═══════════════════════════════════════════════════════════════");
-  console.log("  BACKTEST ROUTINE: 40€ → 250€ Target (3 Months, Compound)");
+  console.log("  BACKTEST AGRESSIF: 40€ → 250€ en 3 Mois (525%)");
   console.log("═══════════════════════════════════════════════════════════════\n");
 
-  // Fetch all data once
-  console.log("Fetching 6 months of data for all assets...\n");
+  console.log("Fetching 3 months of 1h data...\n");
   const allData = {};
   for (const asset of ASSETS_TO_TEST) {
     try {
-      allData[asset.sym] = await yfChart(asset.sym, "6mo", "1d");
-      process.stdout.write(`  ✓ ${asset.name}\n`);
+      allData[asset.sym] = await yfChart(asset.sym, "3mo", "1h");
+      process.stdout.write(`  ✓ ${asset.name} (${allData[asset.sym].length} candles)\n`);
       await new Promise(r => setTimeout(r, 300));
     } catch (err) {
       process.stdout.write(`  ✗ ${asset.name}: ${err.message}\n`);
@@ -253,89 +230,60 @@ async function runBacktest() {
 
   console.log(`\nData loaded for ${Object.keys(allData).length} assets.\n`);
 
-  // Test each strategy with compound interest
   const results = [];
   for (const strat of STRATEGIES) {
-    let balance = 40; // Capital initial
+    let balance = 40;
     let totalWins = 0, totalLosses = 0;
-    const assetResults = [];
-    const compoundHistory = [{ asset: "Start", balance: 40, pnl: 0 }];
+    const compoundHistory = [{ asset: "Start", balance: 40 }];
 
-    for (const asset of ASSETS_TO_TEST) {
+    const assetsToTrade = strat.topOnly ? ASSETS_TO_TEST.filter(a => a.volatile) : ASSETS_TO_TEST;
+    for (const asset of assetsToTrade) {
       if (!allData[asset.sym]) continue;
       const result = backtestAsset(asset.sym, allData[asset.sym], strat, balance);
       if (result && result.totalTrades > 0) {
         totalWins += result.wins;
         totalLosses += result.losses;
-        assetResults.push(result);
-        // Compound: le nouveau balance devient le balance final de cet asset
         balance = result.finalBalance;
-        compoundHistory.push({ 
-          asset: asset.name, 
-          balance: balance, 
-          pnl: result.pnlEur,
-          trades: result.totalTrades,
-          winRate: result.winRate
-        });
+        compoundHistory.push({ asset: asset.name, balance, pnl: result.pnlEur, trades: result.totalTrades, wr: result.winRate });
       }
     }
 
     const totalTrades = totalWins + totalLosses;
     const winRate = totalTrades > 0 ? ((totalWins / totalTrades) * 100).toFixed(1) : 0;
-    const avgPnl = assetResults.length > 0 ? (assetResults.reduce((a, r) => a + r.pnlPct, 0) / assetResults.length).toFixed(2) : 0;
-    const finalPnlEur = balance - 40;
-    const finalPnlPct = ((balance - 40) / 40 * 100).toFixed(2);
-    const profitableAssets = assetResults.filter(r => r.pnlPct > 0).length;
-    const targetReached = balance >= 250;
+    const finalPnlPct = ((balance - 40) / 40 * 100).toFixed(1);
+    const target = balance >= 250;
 
-    results.push({ 
-      name: strat.name, 
-      winRate: +winRate, 
-      totalTrades, 
-      totalWins, 
-      totalLosses, 
-      avgPnl: +avgPnl, 
-      finalPnlEur,
-      finalPnlPct: +finalPnlPct,
-      finalBalance: balance,
-      compoundHistory,
-      profitableAssets, 
-      totalAssets: assetResults.length,
-      targetReached
-    });
-    
-    const emoji = targetReached ? "�" : +winRate >= 60 ? "✅" : +winRate >= 50 ? "⚠️" : "❌";
-    console.log(`${emoji} ${strat.name}: WR=${winRate}% | ${totalTrades} trades | Final: ${balance.toFixed(2)}€ (${finalPnlPct}%) | Target: ${targetReached ? "✓" : "✗"} | Profitable=${profitableAssets}/${assetResults.length}`);
+    results.push({ name: strat.name, winRate: +winRate, totalTrades, finalBalance: balance, finalPnlPct: +finalPnlPct, compoundHistory, target });
+
+    const emoji = target ? "🏆" : +finalPnlPct > 100 ? "🔥" : +finalPnlPct > 0 ? "✅" : "❌";
+    console.log(`${emoji} ${strat.name}: WR=${winRate}% | ${totalTrades} trades | ${balance.toFixed(2)}€ (${finalPnlPct}%)${target ? " 🎯" : ""}`);
   }
 
-  // Sort by final balance
   results.sort((a, b) => b.finalBalance - a.finalBalance);
 
   console.log("\n═══════════════════════════════════════════════════════════════");
-  console.log("  RANKED RESULTS (COMPOUND INTEREST)");
+  console.log("  CLASSEMENT FINAL");
   console.log("═══════════════════════════════════════════════════════════════");
   results.forEach((r, i) => {
-    const marker = r.targetReached ? " 🎯 TARGET REACHED!" : r.finalPnlEur > 0 ? " 💰 PROFIT" : " ❌ LOSS";
-    console.log(`  ${i + 1}. ${r.name}: WR=${r.winRate}% | Final=${r.finalBalance.toFixed(2)}€ (${r.finalPnlPct}%) | ${r.totalTrades} trades${marker}`);
+    const marker = r.target ? " 🎯 TARGET!" : r.finalBalance > 40 ? " 💰" : " ❌";
+    console.log(`  ${i + 1}. ${r.name}: ${r.finalBalance.toFixed(2)}€ (${r.finalPnlPct}%) | WR=${r.winRate}% | ${r.totalTrades} trades${marker}`);
   });
 
   const best = results[0];
   console.log("\n═══════════════════════════════════════════════════════════════");
-  if (best.targetReached) {
-    console.log(`  � TARGET REACHED! "${best.name}" achieved 250€`);
+  if (best.target) {
+    console.log(`  🏆 TARGET ATTEINT! "${best.name}" → ${best.finalBalance.toFixed(2)}€`);
   } else {
-    console.log(`  ⚠️ Target NOT reached. Best: ${best.finalBalance.toFixed(2)}€ (need ${250 - best.finalBalance.toFixed(2)}€ more)`);
+    console.log(`  ⚠️ Meilleur: "${best.name}" → ${best.finalBalance.toFixed(2)}€ (${best.finalPnlPct}%)`);
+    console.log(`  Il manque ${(250 - best.finalBalance).toFixed(2)}€ pour atteindre 250€`);
   }
-  console.log(`  📊 Starting: 40€ → Final: ${best.finalBalance.toFixed(2)}€`);
-  console.log(`  💵 Profit: ${best.finalPnlEur.toFixed(2)}€ (${best.finalPnlPct}%)`);
-  console.log(`  📈 Win Rate: ${best.winRate}% | Total Trades: ${best.totalTrades}`);
-  console.log("\n  Compound History:");
+  console.log(`  📊 40€ → ${best.finalBalance.toFixed(2)}€ | WR: ${best.winRate}% | ${best.totalTrades} trades`);
+  console.log("\n  Historique:");
   best.compoundHistory.forEach((h, i) => {
-    if (i === 0) {
-      console.log(`    ${i}. ${h.asset}: ${h.balance.toFixed(2)}€`);
-    } else {
+    if (i === 0) console.log(`    ${i}. ${h.asset}: ${h.balance.toFixed(2)}€`);
+    else {
       const arrow = h.pnl >= 0 ? "↑" : "↓";
-      console.log(`    ${i}. ${h.asset}: ${h.balance.toFixed(2)}€ (${arrow}${h.pnl.toFixed(2)}€, ${h.trades} trades, ${h.winRate}% WR)`);
+      console.log(`    ${i}. ${h.asset}: ${h.balance.toFixed(2)}€ (${arrow}${h.pnl.toFixed(2)}€, ${h.trades}t, ${h.wr}% WR)`);
     }
   });
   console.log("═══════════════════════════════════════════════════════════════\n");

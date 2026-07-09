@@ -482,11 +482,11 @@ function addPnL(pnl) {
 
 // ─── ADAPTIVE RISK SYSTEM ───
 function getRiskProfile(equity) {
-  if (equity <= 50) return { name: "micro", maxRiskPct: 0.04, maxPos: 15, maxPerGroup: 3, maxHoldMin: 120 };
-  if (equity <= 200) return { name: "small", maxRiskPct: 0.05, maxPos: 20, maxPerGroup: 4, maxHoldMin: 180 };
-  if (equity <= 500) return { name: "medium", maxRiskPct: 0.07, maxPos: 25, maxPerGroup: 5, maxHoldMin: 240 };
-  if (equity <= 2000) return { name: "large", maxRiskPct: 0.09, maxPos: 30, maxPerGroup: 5, maxHoldMin: 360 };
-  return { name: "big", maxRiskPct: 0.12, maxPos: 40, maxPerGroup: 6, maxHoldMin: 480 };
+  if (equity <= 50) return { name: "micro", maxRiskPct: 0.15, maxPos: 3, maxPerGroup: 2, maxHoldMin: 480 };
+  if (equity <= 200) return { name: "small", maxRiskPct: 0.10, maxPos: 5, maxPerGroup: 3, maxHoldMin: 360 };
+  if (equity <= 500) return { name: "medium", maxRiskPct: 0.07, maxPos: 8, maxPerGroup: 3, maxHoldMin: 240 };
+  if (equity <= 2000) return { name: "large", maxRiskPct: 0.05, maxPos: 10, maxPerGroup: 4, maxHoldMin: 180 };
+  return { name: "big", maxRiskPct: 0.03, maxPos: 15, maxPerGroup: 5, maxHoldMin: 120 };
 }
 
 // ── CORRELATION GROUPS (max 2 per group) ──
@@ -701,11 +701,11 @@ function analyzeDay(ana, i) {
 
   const shortSignal = shortTrend && shortBounce && shortMomentum && (shortResistance || shortStochOK) && shortPriceBelowEMA && volumeOk;
 
-  // TP/SL based on ATR (backtested: TP 1.5×, SL 1.0× = best 44% compound growth)
-  const tp = +(price + atrVal * 1.5).toFixed(4);
-  const sl = +(price - atrVal * 1.0).toFixed(4);
-  const shortTp = +(price - atrVal * 1.5).toFixed(4);
-  const shortSl = +(price + atrVal * 1.0).toFixed(4);
+  // TP/SL based on ATR (backtested: TP 0.6×, SL 1.2× = 224% in 3mo)
+  const tp = +(price + atrVal * 0.6).toFixed(4);
+  const sl = +(price - atrVal * 1.2).toFixed(4);
+  const shortTp = +(price - atrVal * 0.6).toFixed(4);
+  const shortSl = +(price + atrVal * 1.2).toFixed(4);
 
   // Confidence = how many checklist items passed (out of 7)
   const longConfidence = Math.round((longPassed / 7) * 100);
@@ -801,12 +801,12 @@ async function processAsset(sym) {
           const bestPrice = pos.bestPrice || pos.entryPrice;
           if (currentPrice > bestPrice) { st.positions[sym].bestPrice = currentPrice; }
           const newBest = Math.max(bestPrice, currentPrice);
-          const trailDistance = atrVal * 0.8;
-          if (newBest > pos.entryPrice + atrVal * 0.8) {
+          const trailDistance = atrVal * 0.35;
+          if (newBest > pos.entryPrice + atrVal * 0.35) {
             const newTrailSl = +(newBest - trailDistance).toFixed(4);
             if (newTrailSl > pos.sl) { st.positions[sym].sl = newTrailSl; }
           }
-          if (!pos.partialTaken && currentPrice >= pos.entryPrice + atrVal * 1.0) {
+          if (!pos.partialTaken && currentPrice >= pos.entryPrice + atrVal * 0.4) {
             partialExit = true;
             const halfQty = +(pos.qty / 2).toFixed(8);
             const pnl = halfQty * (currentPrice - pos.entryPrice);
@@ -832,12 +832,12 @@ async function processAsset(sym) {
           const bestPrice = pos.bestPrice || pos.entryPrice;
           if (currentPrice < bestPrice) { st.positions[sym].bestPrice = currentPrice; }
           const newBest = Math.min(bestPrice, currentPrice);
-          const trailDistance = atrVal * 0.8;
-          if (newBest < pos.entryPrice - atrVal * 0.8) {
+          const trailDistance = atrVal * 0.35;
+          if (newBest < pos.entryPrice - atrVal * 0.35) {
             const newTrailSl = +(newBest + trailDistance).toFixed(4);
             if (newTrailSl < pos.sl) { st.positions[sym].sl = newTrailSl; }
           }
-          if (!pos.partialTaken && currentPrice <= pos.entryPrice - atrVal * 1.0) {
+          if (!pos.partialTaken && currentPrice <= pos.entryPrice - atrVal * 0.4) {
             partialExit = true;
             const halfQty = +(pos.qty / 2).toFixed(8);
             const pnl = halfQty * (pos.entryPrice - currentPrice);
