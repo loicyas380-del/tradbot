@@ -24,7 +24,6 @@ async function yfChart(symbol, range = "3mo", interval = "1h") {
 
 function getVal(arr, idx) { return idx >= 0 && idx < arr.length ? arr[idx] : undefined; }
 
-// VWAP calculation
 function calculateVWAP(rawData) {
   const vwap = [];
   let cumVolumePrice = 0;
@@ -58,7 +57,6 @@ function computeIndicators(rawData) {
   };
 }
 
-// Slippage simulation (realistic)
 function applySlippage(price, side, assetType) {
   const slippageRates = { crypto: 0.0005, stock: 0.0003, stock_fast: 0.0003, forex: 0.0001, commodity: 0.0005, index: 0.0003 };
   const rate = slippageRates[assetType] || 0.0003;
@@ -66,12 +64,10 @@ function applySlippage(price, side, assetType) {
   return side === "BUY" ? price + slippage : price - slippage;
 }
 
-// Trading fees (realistic: 0.05% per trade)
 function calculateFees(amount) {
-  return amount * 0.0005; // 0.05% fee
+  return amount * 0.0005;
 }
 
-// Kelly Criterion
 function getKellyCriterion(wins, losses, recentPnL) {
   const totalTrades = wins + losses;
   if (totalTrades < 10) return 0.5;
@@ -102,10 +98,9 @@ function backtestAsset(sym, rawData, config, initialBalance, startIdx, endIdx) {
   const maxPos = maxPositions || 5;
   let recentPnL = [];
   let dailyPnL = 0;
-  let dailyTrades = 0;
-  const maxDailyLossPct = 0.15;
   let lastDailyReset = 0;
   let totalFees = 0;
+  const maxDailyLossPct = 0.15;
 
   for (let i = 35; i < ana.len; i++) {
     const { closes, rsi, macd, ema20, ema50, atr, adx, vwap } = ana;
@@ -129,18 +124,14 @@ function backtestAsset(sym, rawData, config, initialBalance, startIdx, endIdx) {
 
     if (!rsiVal || !macdCurr || !ema20Val || !ema50Val || !atrVal || !adxVal || !vwapVal) continue;
 
-    // Daily loss limit
     if (i - lastDailyReset >= 24) {
       dailyPnL = 0;
-      dailyTrades = 0;
       lastDailyReset = i;
     }
     if (dailyPnL < 0 && Math.abs(dailyPnL) / balance > maxDailyLossPct) continue;
 
-    // Kelly Criterion
     const kellyMult = getKellyCriterion(wins, losses, recentPnL);
 
-    // Exit existing positions
     for (let p = positions.length - 1; p >= 0; p--) {
       const pos = positions[p];
       pos.bars++;
@@ -171,7 +162,6 @@ function backtestAsset(sym, rawData, config, initialBalance, startIdx, endIdx) {
         balance += pos.cost + pnl - fees;
         totalFees += fees;
         dailyPnL += pnl;
-        dailyTrades++;
         recentPnL.push(pnl);
         if (recentPnL.length > 20) recentPnL.shift();
         if (pnl > 0) { wins++; consecutiveLosses = 0; } else { losses++; consecutiveLosses++; cooldown = cooldownBars || 5; }
@@ -186,19 +176,14 @@ function backtestAsset(sym, rawData, config, initialBalance, startIdx, endIdx) {
     if (maxDrawdownPct && (peak - balance) / peak > maxDrawdownPct) continue;
     if (consecutiveLosses >= 5) { cooldown = 10; continue; }
 
-    // Entry signals with ADX and VWAP (used as bonus, not required)
     const longTrend = ema20Val > ema50Val;
     const shortTrend = ema20Val < ema50Val;
     const rsiRising = rsiVal > (getVal(rsi, rI - 1) || rsiVal);
     const rsiFalling = rsiVal < (getVal(rsi, rI - 1) || rsiVal);
     const macdRising = macdCurr.histogram > (macdPrev?.histogram || 0);
     const macdFalling = macdCurr.histogram < (macdPrev?.histogram || 0);
-    const strongTrend = adxVal.adx > 20;
-    const aboveVWAP = price > vwapVal;
-    const belowVWAP = price < vwapVal;
 
     if (positions.length < maxPos && balance > 5) {
-      // LONG: original conditions only (ADX/VWAP are informational)
       if (longTrend && rsiVal < 65 && rsiVal > 25 && macdCurr.histogram > 0 && (rsiRising || macdRising)) {
         const riskAmount = balance * riskPct * kellyMult;
         const slDist = atrVal * slMultiplier;
@@ -213,7 +198,6 @@ function backtestAsset(sym, rawData, config, initialBalance, startIdx, endIdx) {
           totalFees += fees;
         }
       }
-      // SHORT: original conditions only
       else if (shortTrend && rsiVal > 35 && rsiVal < 75 && macdCurr.histogram < 0 && (rsiFalling || macdFalling)) {
         const riskAmount = balance * riskPct * kellyMult;
         const slDist = atrVal * slMultiplier;
@@ -231,7 +215,6 @@ function backtestAsset(sym, rawData, config, initialBalance, startIdx, endIdx) {
     }
   }
 
-  // Close remaining positions
   for (const pos of positions) {
     const lastPrice = ana.closes[ana.len - 1];
     const exitPriceSlippage = applySlippage(lastPrice, pos.side === "LONG" ? "SELL" : "BUY", "crypto");
@@ -276,14 +259,14 @@ const ASSETS = [
 
 async function main() {
   console.log("═══════════════════════════════════════════════════════════════");
-  console.log("  BACKTEST V2 — 1 MOIS | 500€ | Risk 30% | ADX + VWAP + Kelly");
+  console.log("  10 BACKTESTS — V2 avec frais | TP 2.0× | SL 0.6× | 500€");
   console.log("═══════════════════════════════════════════════════════════════\n");
 
-  console.log("Fetching 1 mois de données 1h...\n");
+  console.log("Fetching 3 mois de données 1h...\n");
   const allData = {};
   for (const asset of ASSETS) {
     try {
-      allData[asset.sym] = await yfChart(asset.sym, "1mo", "1h");
+      allData[asset.sym] = await yfChart(asset.sym, "3mo", "1h");
       process.stdout.write(`  ✓ ${asset.name} (${allData[asset.sym].length} candles)\n`);
       await new Promise(r => setTimeout(r, 250));
     } catch (err) {
@@ -293,48 +276,76 @@ async function main() {
 
   console.log(`\nData: ${Object.keys(allData).length} assets.\n`);
 
-  let balance = 500;
-  let totalWins = 0, totalLosses = 0;
-  let maxDD = 0;
-  let totalFeesAll = 0;
-  let allTrades = [];
+  const WINDOWS = [
+    { name: "Période 1", start: 0, end: 720 },
+    { name: "Période 2", start: 100, end: 820 },
+    { name: "Période 3", start: 200, end: 920 },
+    { name: "Période 4", start: 300, end: 1020 },
+    { name: "Période 5", start: 400, end: 1120 },
+    { name: "Période 6", start: 500, end: 1220 },
+    { name: "Période 7", start: 600, end: 1320 },
+    { name: "Période 8", start: 700, end: 1420 },
+    { name: "Période 9", start: 800, end: 1520 },
+    { name: "Période 10", start: 900, end: 1620 },
+  ];
 
-  console.log("═══════════════════════════════════════════════════════════════");
-  console.log("  ÉVOLUTION DU SOLDE (compound)")
-  console.log("═══════════════════════════════════════════════════════════════");
+  const results = [];
 
-  for (const asset of ASSETS) {
-    if (!allData[asset.sym]) continue;
-    const result = backtestAsset(asset.sym, allData[asset.sym], STRAT, balance, 0, allData[asset.sym].length);
-    if (result && result.totalTrades > 0) {
-      totalWins += result.wins;
-      totalLosses += result.losses;
-      if (result.maxDrawdown > maxDD) maxDD = result.maxDrawdown;
-      totalFeesAll += result.totalFees;
-      balance = result.finalBalance;
-      const emoji = result.pnlPct >= 0 ? "🟢" : "🔴";
-      console.log(`  ${emoji} ${asset.name.padEnd(14)} ${balance.toFixed(2)}€  (↑${result.pnlPct >= 0 ? "+" : ""}${result.pnlPct}% | ${result.totalTrades}t | ${result.winRate}% WR | DD:${result.maxDrawdown}% | Fees:${result.totalFees}€)`);
+  for (const window of WINDOWS) {
+    let balance = 500;
+    let totalWins = 0, totalLosses = 0;
+    let maxDD = 0;
+    let totalFees = 0;
+
+    for (const asset of ASSETS) {
+      if (!allData[asset.sym]) continue;
+      const result = backtestAsset(asset.sym, allData[asset.sym], STRAT, balance, window.start, window.end);
+      if (result && result.totalTrades > 0) {
+        totalWins += result.wins;
+        totalLosses += result.losses;
+        if (result.maxDrawdown > maxDD) maxDD = result.maxDrawdown;
+        totalFees += result.totalFees;
+        balance = result.finalBalance;
+      }
     }
+
+    const totalTrades = totalWins + totalLosses;
+    const winRate = totalTrades > 0 ? ((totalWins / totalTrades) * 100).toFixed(1) : 0;
+    const pnlPct = ((balance - 500) / 500 * 100).toFixed(1);
+    const pnlEur = (balance - 500).toFixed(2);
+
+    results.push({ name: window.name, finalBalance: balance, pnlPct: +pnlPct, pnlEur: +pnlEur, winRate: +winRate, totalTrades, maxDD: +maxDD, totalFees: +totalFees.toFixed(2) });
   }
 
-  const totalTrades = totalWins + totalLosses;
-  const winRate = totalTrades > 0 ? ((totalWins / totalTrades) * 100).toFixed(1) : 0;
-  const pnlPct = ((balance - 500) / 500 * 100).toFixed(1);
-  const netProfit = balance - 500 - totalFeesAll;
+  console.log("═══════════════════════════════════════════════════════════════");
+  console.log("  RÉSULTATS — 10 PÉRIODES (avec frais/slippage)")
+  console.log("═══════════════════════════════════════════════════════════════");
+  console.log(`  ${"Période".padEnd(12)} | ${"Final".padStart(10)} | ${"Profit".padStart(10)} | ${"WR".padStart(6)} | ${"Trades".padStart(6)} | ${"MaxDD".padStart(6)} | ${"Fees".padStart(8)}`);
+  console.log(`  ${"─".repeat(12)}─┼─${"─".repeat(10)}─┼─${"─".repeat(10)}─┼─${"─".repeat(6)}─┼─${"─".repeat(6)}─┼─${"─".repeat(6)}─┼─${"─".repeat(8)}`);
+
+  let totalProfit = 0;
+  let maxDDAll = 0;
+  let totalFeesAll = 0;
+
+  for (const r of results) {
+    const emoji = r.pnlPct >= 0 ? "🟢" : "🔴";
+    console.log(`  ${r.name.padEnd(12)} | ${(r.finalBalance.toFixed(2) + "€").padStart(10)} | ${emoji}${r.pnlEur >= 0 ? "+" : ""}${r.pnlEur.toFixed(2).padStart(7)}€ | ${(r.winRate + "%").padStart(6)} | ${String(r.totalTrades).padStart(6)} | ${(r.maxDD + "%").padStart(6)} | ${(r.totalFees + "€").padStart(8)}`);
+    totalProfit += r.pnlPct;
+    if (r.maxDD > maxDDAll) maxDDAll = r.maxDD;
+    totalFeesAll += r.totalFees;
+  }
+
+  const avgProfit = (totalProfit / 10).toFixed(1);
+  const winningPeriods = results.filter(r => r.pnlPct > 0).length;
 
   console.log("\n═══════════════════════════════════════════════════════════════");
-  console.log("  RÉSUMÉ FINAL (avec slippage + frais)")
+  console.log("  STATISTIQUES GLOBALES");
   console.log("═══════════════════════════════════════════════════════════════");
-  console.log(`  💰 Départ: 500€ → Final: ${balance.toFixed(2)}€`);
-  console.log(`  📈 Profit brut: +${(balance - 500).toFixed(2)}€ (+${pnlPct}%)`);
-  console.log(`  💸 Total frais/slippage: -${totalFeesAll.toFixed(2)}€`);
-  console.log(`  💵 Profit net: +${netProfit.toFixed(2)}€ (+${(netProfit / 500 * 100).toFixed(1)}%)`);
-  console.log(`  🎯 Win Rate: ${winRate}%`);
-  console.log(`  📊 Total Trades: ${totalTrades} (${totalWins}W / ${totalLosses}L)`);
-  console.log(`  🔻 Max Drawdown: ${maxDD}%`);
-  console.log(`  🧮 Kelly Criterion: utilisé pour sizing optimal`);
-  console.log(`  📉 ADX > 25: filtre tendance forte`);
-  console.log(`  📊 VWAP: filtre prix vs moyenne institutionnelle`);
+  console.log(`  📊 Profit moyen: +${avgProfit}% par période`);
+  console.log(`  🟢 Périodes gagnantes: ${winningPeriods}/10`);
+  console.log(`  🔴 Périodes perdantes: ${10 - winningPeriods}/10`);
+  console.log(`  🔻 Max DD observé: ${maxDDAll}%`);
+  console.log(`  💸 Total frais: ${totalFeesAll.toFixed(2)}€`);
   console.log("═══════════════════════════════════════════════════════════════\n");
 }
 

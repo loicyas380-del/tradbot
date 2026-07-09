@@ -4,7 +4,7 @@ import cors from "cors";
 import { fileURLToPath } from "url";
 import { dirname, join } from "path";
 import {
-  RSI, MACD, BollingerBands, EMA, SMA, ATR, Stochastic,
+  RSI, MACD, BollingerBands, EMA, SMA, ATR, Stochastic, ADX,
 } from "technicalindicators";
 import Stripe from "stripe";
 
@@ -428,6 +428,22 @@ const liveState = {
   virtualRecentPnL: [],
   realDepositHistory: [],
   virtualDepositHistory: [],
+  // NEW: Daily loss tracking
+  realDailyPnL: 0,
+  virtualDailyPnL: 0,
+  realDailyTrades: 0,
+  virtualDailyTrades: 0,
+  lastDailyReset: Date.now(),
+  // NEW: Kelly Criterion stats
+  realTotalTrades: 0,
+  virtualTotalTrades: 0,
+  realWinStreak: 0,
+  virtualWinStreak: 0,
+  realLossStreak: 0,
+  virtualLossStreak: 0,
+  // NEW: Daily loss limit
+  maxDailyLossPct: 0.15, // 15% max daily loss
+  dailyTradingPaused: false,
 };
 
 function getState() {
@@ -541,6 +557,138 @@ function addNotification(type, title, message) {
   console.log(`[NOTIF] ${type}: ${title} - ${message}`);
 }
 
+// ═══════════════════════════════════════════════════════════════
+// NEW: ADVANCED RISK MANAGEMENT
+// ═══════════════════════════════════════════════════════════════
+
+// Kelly Criterion: optimal position size based on win rate
+function getKellyCriterion() {
+  const st = getState();
+  const totalTrades = st.wins + st.losses;
+  if (totalTrades < 10) return 0.5; // Conservative default
+  const winRate = st.wins / totalTrades;
+  const avgWin = st.recentPnL.filter(p => p > 0).length > 0 
+    ? st.recentPnL.filter(p => p > 0).reduce((a, b) => a + b, 0) / st.recentPnL.filter(p => p > 0).length 
+    : 1;
+  const avgLoss = st.recentPnL.filter(p => p < 0).length > 0 
+    ? Math.abs(st.recentPnL.filter(p => p < 0).reduce((a, b) => a + b, 0) / st.recentPnL.filter(p => p < 0).length) 
+    : 1;
+  const winLossRatio = avgWin / avgLoss;
+  
+  // Kelly formula: f* = (bp - q) / b
+  // where b = win/loss ratio, p = win rate, q = loss rate
+  const kelly = ((winLossRatio * winRate) - (1 - winRate)) / winLossRatio;
+  
+  // Clamp between 0.1 and 0.5 (conservative)
+  return Math.max(0.1, Math.min(0.5, kelly));
+}
+
+// Daily loss limit check
+function checkDailyLossLimit() {
+  const now = Date.now();
+  const st = getState();
+  
+  // Reset daily stats every 24 hours
+  if (now - liveState.lastDailyReset > 24 * 60 * 60 * 1000) {
+    liveState.realDailyPnL = 0;
+    liveState.virtualDailyPnL = 0;
+    liveState.realDailyTrades = 0;
+    liveState.virtualDailyTrades = 0;
+    liveState.dailyTradingPaused = false;
+    liveState.lastDailyReset = now;
+    console.log("[DAILY] Reset daily stats");
+  }
+  
+  const dailyPnL = liveState.activeMode === "real" ? liveState.realDailyPnL : liveState.virtualDailyPnL;
+  const totalEquity = getTotalEquity();
+  const dailyLossPct = totalEquity > 0 ? Math.abs(dailyPnL) / totalEquity : 0;
+  
+  if (dailyPnL < 0 && dailyLossPct > liveState.maxDailyLossPct) {
+    liveState.dailyTradingPaused = true;
+    console.log(`[DAILY] Trading paused! Daily loss: ${(dailyLossPct * 100).toFixed(1)}% > ${(liveState.maxDailyLossPct * 100)}%`);
+    addNotification("error", "🛑 DAILY LOSS LIMIT", `Perte journalière: ${(dailyLossPct * 100).toFixed(1)}% > ${(liveState.maxDailyLossPct * 100)}% — Trading suspendu`);
+    return true;
+  }
+  return false;
+}
+
+// Slippage simulation (realistic)
+function applySlippage(price, side, assetType) {
+  const slippageRates = {
+    crypto: 0.0005,    // 0.05%
+    stock: 0.0003,     // 0.03%
+    stock_fast: 0.0003,
+    forex: 0.0001,     // 0.01%
+    commodity: 0.0005,
+    index: 0.0003,
+  };
+  const rate = slippageRates[assetType] || 0.0003;
+  const slippage = price * rate;
+  return side === "BUY" ? price + slippage : price - slippage;
+}
+
+// Trading fees simulation (0.05% per trade)
+function calculateFees(amount) {
+  return amount * 0.0005; // 0.05% fee
+}
+
+// VWAP calculation
+function calculateVWAP(rawData) {
+  const vwap = [];
+  let cumVolumePrice = 0;
+  let cumVolume = 0;
+  
+  for (let i = 0; i < rawData.length; i++) {
+    const typicalPrice = (rawData[i].high + rawData[i].low + rawData[i].close) / 3;
+    cumVolumePrice += typicalPrice * rawData[i].volume;
+    cumVolume += rawData[i].volume;
+    vwap.push(cumVolume > 0 ? cumVolumePrice / cumVolume : rawData[i].close);
+  }
+  return vwap;
+}
+
+// Support/Resistance levels
+function findSupportResistance(rawData, lookback = 20) {
+  const levels = [];
+  const closes = rawData.map(d => d.close);
+  
+  for (let i = lookback; i < closes.length - lookback; i++) {
+    const window = closes.slice(i - lookback, i + lookback);
+    const high = Math.max(...window);
+    const low = Math.min(...window);
+    
+    // Resistance: local high
+    if (closes[i] === high) {
+      levels.push({ type: "RESISTANCE", price: closes[i], strength: 1 });
+    }
+    // Support: local low
+    if (closes[i] === low) {
+      levels.push({ type: "SUPPORT", price: closes[i], strength: 1 });
+    }
+  }
+  
+  // Round to psychological levels
+  const psychologicalLevels = [];
+  for (let i = 0; i < levels.length; i++) {
+    const price = levels[i].price;
+    const rounded = Math.round(price / 10) * 10;
+    psychologicalLevels.push({ ...levels[i], price: rounded });
+  }
+  
+  return psychologicalLevels;
+}
+
+// Check if price is near support/resistance
+function isNearLevel(price, levels, threshold = 0.02) {
+  for (const level of levels) {
+    const distance = Math.abs(price - level.price) / price;
+    if (distance < threshold) {
+      return level;
+    }
+  }
+  return null;
+}
+
 function getPositionCount() {
   const st = getState();
   return Object.keys(st.positions).length;
@@ -590,11 +738,15 @@ function computeIndicators(rawData) {
     atr: ATR.calculate({ high: highs, low: lows, close: closes, period: 14 }),
     stoch: Stochastic.calculate({ high: highs, low: lows, close: closes, period: 14, signalPeriod: 3 }),
     volSma20: SMA.calculate({ values: volumes, period: 20 }),
+    // NEW: ADX for trend strength
+    adx: ADX.calculate({ high: highs, low: lows, close: closes, period: 14 }),
+    // NEW: VWAP
+    vwap: calculateVWAP(rawData),
   };
 }
 
 function analyzeDay(ana, i) {
-  const { closes, volumes, rsi, macd, bb, ema20, ema50, sma200, atr, stoch, volSma20, len } = ana;
+  const { closes, volumes, rsi, macd, bb, ema20, ema50, sma200, atr, stoch, volSma20, len, adx, vwap } = ana;
   const price = closes[i];
   const rI = i - (len - rsi.length);
   const mI = i - (len - macd.length);
@@ -605,6 +757,8 @@ function analyzeDay(ana, i) {
   const aI = i - (len - atr.length);
   const sI = i - (len - stoch.length);
   const vI = i - (len - volSma20.length);
+  const adxI = i - (len - adx.length);
+  const vwapI = i - (len - vwap.length);
 
   const rsiVal = getVal(rsi, rI);
   const macdCurr = getVal(macd, mI);
@@ -618,6 +772,9 @@ function analyzeDay(ana, i) {
   const volNow = getVal(volumes, i);
   const volPrev = getVal(volumes, i - 1);
   const volAvg = getVal(volSma20, vI);
+  // NEW: ADX and VWAP
+  const adxVal = getVal(adx, adxI);
+  const vwapVal = getVal(vwap, vwapI);
 
   if (rsiVal == null || !macdCurr || !bbVal || !ema20Val || !ema50Val || !atrVal || !stochVal) return null;
 
@@ -633,8 +790,17 @@ function analyzeDay(ana, i) {
   // Stochastic
   const stochD = stochVal.d;
 
+  // NEW: ADX trend strength
+  const adxDI = adxVal?.adx || 0;
+  const strongTrend = adxDI > 20; // Relaxed from 25 to 20
+  const weakTrend = adxDI < 20; // ADX < 20 = weak/choppy market
+
+  // NEW: VWAP position
+  const aboveVWAP = price > vwapVal;
+  const belowVWAP = price < vwapVal;
+
   // ═══════════════════════════════════════════════════════════════
-  // STRATEGY: TREND PULLBACK (proven approach)
+  // STRATEGY: TREND PULLBACK (proven approach) + ADX/VWAP
   // Trade in direction of trend, enter on pullbacks
   // ═══════════════════════════════════════════════════════════════
 
@@ -646,6 +812,9 @@ function analyzeDay(ana, i) {
   const longSupport = bbPct < 0.5;
   const longStochOK = stochVal.k < 60;
   const longPriceAboveEMA = price > ema20Val;
+  // NEW: ADX and VWAP conditions
+  const longStrongTrend = strongTrend;
+  const longAboveVWAP = aboveVWAP;
 
   const longChecklist = [
     longTrend,
@@ -655,6 +824,8 @@ function analyzeDay(ana, i) {
     longStochOK,
     longPriceAboveEMA,
     volumeOk,
+    longStrongTrend, // NEW
+    longAboveVWAP,   // NEW
   ];
   const longPassed = longChecklist.filter(Boolean).length;
   const longReasons = [];
@@ -666,9 +837,11 @@ function analyzeDay(ana, i) {
   if (longStochOK) longReasons.push(`Stoch${stochVal.k.toFixed(0)}`);
   if (longPriceAboveEMA) longReasons.push("AboveEMA");
   if (volumeSpike) longReasons.push("VolSpike");
+  if (longStrongTrend) longReasons.push("ADX>25"); // NEW
+  if (longAboveVWAP) longReasons.push("AboveVWAP"); // NEW
 
-  // LONG signal: trend + pullback + momentum + (support or stoch)
-  const longSignal = longTrend && longPullback && longMomentum && (longSupport || longStochOK) && longPriceAboveEMA && volumeOk;
+  // LONG signal: trend + pullback + momentum + (support or stoch) + (ADX or VWAP)
+  const longSignal = longTrend && longPullback && longMomentum && (longSupport || longStochOK) && longPriceAboveEMA && volumeOk && (longStrongTrend || longAboveVWAP);
 
   // ── SHORT SETUP ──
   const shortTrend = ema20Val < ema50Val;
@@ -678,6 +851,9 @@ function analyzeDay(ana, i) {
   const shortResistance = bbPct > 0.5;
   const shortStochOK = stochVal.k > 40;
   const shortPriceBelowEMA = price < ema20Val;
+  // NEW: ADX and VWAP conditions
+  const shortStrongTrend = strongTrend;
+  const shortBelowVWAP = belowVWAP;
 
   const shortChecklist = [
     shortTrend,
@@ -687,6 +863,8 @@ function analyzeDay(ana, i) {
     shortStochOK,
     shortPriceBelowEMA,
     volumeOk,
+    shortStrongTrend, // NEW
+    shortBelowVWAP,   // NEW
   ];
   const shortPassed = shortChecklist.filter(Boolean).length;
   const shortReasons = [];
@@ -698,18 +876,20 @@ function analyzeDay(ana, i) {
   if (shortStochOK) shortReasons.push(`Stoch${stochVal.k.toFixed(0)}`);
   if (shortPriceBelowEMA) shortReasons.push("BelowEMA");
   if (volumeSpike) shortReasons.push("VolSpike");
+  if (shortStrongTrend) shortReasons.push("ADX>25"); // NEW
+  if (shortBelowVWAP) shortReasons.push("BelowVWAP"); // NEW
 
-  const shortSignal = shortTrend && shortBounce && shortMomentum && (shortResistance || shortStochOK) && shortPriceBelowEMA && volumeOk;
+  const shortSignal = shortTrend && shortBounce && shortMomentum && (shortResistance || shortStochOK) && shortPriceBelowEMA && volumeOk && (shortStrongTrend || shortBelowVWAP);
 
-  // TP/SL based on ATR (backtested: TP 0.6×, SL 1.2× = 224% in 3mo)
-  const tp = +(price + atrVal * 0.6).toFixed(4);
-  const sl = +(price - atrVal * 1.2).toFixed(4);
-  const shortTp = +(price - atrVal * 0.6).toFixed(4);
-  const shortSl = +(price + atrVal * 1.2).toFixed(4);
+  // TP/SL based on ATR (V2: higher TP for bigger gains)
+  const tp = +(price + atrVal * 2.0).toFixed(4);
+  const sl = +(price - atrVal * 0.6).toFixed(4);
+  const shortTp = +(price - atrVal * 2.0).toFixed(4);
+  const shortSl = +(price + atrVal * 0.6).toFixed(4);
 
-  // Confidence = how many checklist items passed (out of 7)
-  const longConfidence = Math.round((longPassed / 7) * 100);
-  const shortConfidence = Math.round((shortPassed / 7) * 100);
+  // Confidence = how many checklist items passed (out of 9 now)
+  const longConfidence = Math.round((longPassed / 9) * 100);
+  const shortConfidence = Math.round((shortPassed / 9) * 100);
 
   return {
     longSignal, shortSignal,
@@ -720,6 +900,9 @@ function analyzeDay(ana, i) {
     price, volumeConfirm: volumeOk, volumeSpike,
     rsi: rsiVal, bbPct, stochK: stochVal.k,
     ema20: ema20Val, ema50: ema50Val,
+    // NEW: ADX and VWAP
+    adx: adxDI, strongTrend, weakTrend,
+    vwap: vwapVal, aboveVWAP, belowVWAP,
   };
 }
 
@@ -886,15 +1069,23 @@ async function processAsset(sym) {
             pnl = posFinal.qty * (posFinal.entryPrice - exitPrice);
             pct = ((posFinal.entryPrice - exitPrice) / posFinal.entryPrice) * 100;
           }
-          setBalance(st.balance + posFinal.cost + pnl);
+          // NEW: Apply exit slippage
+          const exitSlippage = applySlippage(exitPrice, posFinal.side === "LONG" ? "SELL" : "BUY", asset.type);
+          const exitFees = calculateFees(posFinal.cost + pnl);
+          setBalance(st.balance + posFinal.cost + pnl - exitFees);
           addPnL(pnl);
+          // NEW: Update daily PnL
+          if (liveState.activeMode === "real") liveState.realDailyPnL += pnl;
+          else liveState.virtualDailyPnL += pnl;
 
           const trade = {
             id: Date.now(), symbol: sym, side: posFinal.side, exitReason,
-            entryPrice: posFinal.entryPrice, exitPrice, qty: posFinal.qty,
+            entryPrice: posFinal.entryPrice, exitPrice: exitSlippage, qty: posFinal.qty,
             entryTime: posFinal.entryTime, exitTime: new Date().toISOString(),
             pnl: +pnl.toFixed(4), pnlPercent: +pct.toFixed(2),
             holdMinutes: Math.round((Date.now() - new Date(posFinal.entryTime).getTime()) / 60000),
+            // NEW: Track fees and slippage
+            fees: +exitFees.toFixed(4), slippage: +(Math.abs(exitSlippage - exitPrice)).toFixed(4),
           };
           st.tradeHistory.unshift(trade);
           delete st.positions[sym];
@@ -908,7 +1099,7 @@ async function processAsset(sym) {
           addNotification(
             pnl >= 0 ? "success" : "error",
             `${emoji} FERMETURE ${sideLabel} ${sym}`,
-            `${exitReason} @ $${exitPrice.toFixed(2)} | PnL: ${pnl >= 0 ? "+" : ""}$${pnl.toFixed(2)} (${pct >= 0 ? "+" : ""}${pct.toFixed(2)}%)`
+            `${exitReason} @ $${exitSlippage.toFixed(2)} | PnL: ${pnl >= 0 ? "+" : ""}$${pnl.toFixed(2)} (${pct >= 0 ? "+" : ""}${pct.toFixed(2)}%) | Fees: $${exitFees.toFixed(4)}`
           );
         }
       }
@@ -931,6 +1122,9 @@ async function processAsset(sym) {
       const recentLosses = recentTrades.filter(t => t.pnl < 0).length;
       const consecutiveLossCooldown = recentTrades.length >= 3 && recentTrades.slice(0, 3).every(t => t.pnl < 0);
 
+      // NEW: Daily loss limit
+      const dailyPaused = checkDailyLossLimit();
+
       const atMax = getPositionCount() >= risk.maxPos;
       const cryptoLimit = isCrypto && getCryptoCount() >= Math.max(5, Math.floor(risk.maxPos * 0.4));
       const stockLimit = isStock && getStockCount() >= Math.max(5, Math.floor(risk.maxPos * 0.35));
@@ -945,6 +1139,9 @@ async function processAsset(sym) {
 
       const isVolatile = asset?.volatile === true;
       const equityMult = getEquityMultiplier();
+      
+      // NEW: Kelly Criterion for position sizing
+      const kellyMultiplier = getKellyCriterion();
 
       // Debug: log signals
       if (result.longSignal || result.shortSignal) {
@@ -959,61 +1156,78 @@ async function processAsset(sym) {
         if (corrLimit) blocks.push("corr");
         if (tradingPaused) blocks.push("paused");
         if (consecutiveLossCooldown) blocks.push("lossCooldown");
+        if (dailyPaused) blocks.push("dailyLimit");
         if (!result.volumeConfirm) blocks.push("vol");
         if (blocks.length > 0) console.log(`[BLOCKED] ${sym}: L=${result.longConfidence}% S=${result.shortConfidence}% → ${blocks.join(", ")}`);
         else console.log(`[SIGNAL] ${sym}: L=${result.longSignal ? result.longConfidence + "%" : "—"} S=${result.shortSignal ? result.shortConfidence + "%" : "—"} ${result.longSignal ? result.longReasons.join(",") : ""}${result.shortSignal ? result.shortReasons.join(",") : ""}`);
       }
 
-      if (!pos && !atMax && !cryptoLimit && !stockLimit && !fastLimit && !marketClosed && !forexClosed && !cooldownActive && !corrLimit && !tradingPaused && !consecutiveLossCooldown && st.balance > 1) {
+      if (!pos && !atMax && !cryptoLimit && !stockLimit && !fastLimit && !marketClosed && !forexClosed && !cooldownActive && !corrLimit && !tradingPaused && !consecutiveLossCooldown && !dailyPaused && st.balance > 1) {
         // ── LONG ENTRY ──
         if (result.longSignal) {
           const confidence = result.longConfidence / 100;
-          const spendRatio = risk.maxRiskPct * confidence * equityMult;
+          // NEW: Kelly Criterion for optimal sizing
+          const spendRatio = risk.maxRiskPct * confidence * equityMult * kellyMultiplier;
           const spend = st.balance * spendRatio;
           const qty = +(spend / currentPrice).toFixed(8);
           const cost = qty * currentPrice;
 
+          // NEW: Apply slippage to entry price
+          const entryPriceWithSlippage = applySlippage(currentPrice, "BUY", asset.type);
+          const fees = calculateFees(cost);
+
           let tpFinal, slFinal;
-          if (isFast) { tpFinal = +(currentPrice + atrVal * 2.0).toFixed(4); slFinal = +(currentPrice - atrVal * 1.2).toFixed(4); }
-          else if (isStock) { tpFinal = +(currentPrice + atrVal * 2.5).toFixed(4); slFinal = +(currentPrice - atrVal * 1.5).toFixed(4); }
+          if (isFast) { tpFinal = +(entryPriceWithSlippage + atrVal * 2.0).toFixed(4); slFinal = +(entryPriceWithSlippage - atrVal * 1.2).toFixed(4); }
+          else if (isStock) { tpFinal = +(entryPriceWithSlippage + atrVal * 2.5).toFixed(4); slFinal = +(entryPriceWithSlippage - atrVal * 1.5).toFixed(4); }
           else { tpFinal = result.tp; slFinal = result.sl; }
 
           st.positions[sym] = {
             side: "LONG", entryTime: new Date().toISOString(),
-            entryPrice: currentPrice, qty, cost,
+            entryPrice: entryPriceWithSlippage, qty, cost: cost + fees,
             tp: tpFinal, sl: slFinal,
-            bestPrice: currentPrice, partialTaken: false, initialQty: qty,
+            bestPrice: entryPriceWithSlippage, partialTaken: false, initialQty: qty,
           };
-          setBalance(st.balance - cost);
+          setBalance(st.balance - cost - fees);
+          // NEW: Update daily stats
+          if (liveState.activeMode === "real") liveState.realDailyTrades++;
+          else liveState.virtualDailyTrades++;
 
           const tag = isCrypto ? "₿" : isFast ? "⚡" : asset?.type === "forex" ? "💱" : asset?.type === "commodity" ? "🥇" : asset?.type === "index" ? "📈" : "📊";
           const volTag = isVolatile ? "🔥" : "";
-          addNotification("info", `${tag}${volTag} LONG ${sym}`, `Achat $${currentPrice.toFixed(2)} | TP: $${tpFinal} | SL: $${slFinal} | Confiance: ${result.longConfidence}% | ${result.longReasons.join(", ")}`);
+          addNotification("info", `${tag}${volTag} LONG ${sym}`, `Achat $${entryPriceWithSlippage.toFixed(2)} | TP: $${tpFinal} | SL: $${slFinal} | Confiance: ${result.longConfidence}% | Kelly: ${(kellyMultiplier * 100).toFixed(0)}% | ${result.longReasons.join(", ")}`);
         }
         // ── SHORT ENTRY ──
         else if (result.shortSignal) {
           const confidence = result.shortConfidence / 100;
-          const spendRatio = risk.maxRiskPct * confidence * equityMult;
+          // NEW: Kelly Criterion for optimal sizing
+          const spendRatio = risk.maxRiskPct * confidence * equityMult * kellyMultiplier;
           const spend = st.balance * spendRatio;
           const qty = +(spend / currentPrice).toFixed(8);
           const cost = qty * currentPrice;
 
+          // NEW: Apply slippage to entry price
+          const entryPriceWithSlippage = applySlippage(currentPrice, "SELL", asset.type);
+          const fees = calculateFees(cost);
+
           let shortTpFinal, shortSlFinal;
-          if (isFast) { shortTpFinal = +(currentPrice - atrVal * 2.0).toFixed(4); shortSlFinal = +(currentPrice + atrVal * 1.2).toFixed(4); }
-          else if (isStock) { shortTpFinal = +(currentPrice - atrVal * 2.5).toFixed(4); shortSlFinal = +(currentPrice + atrVal * 1.5).toFixed(4); }
+          if (isFast) { shortTpFinal = +(entryPriceWithSlippage - atrVal * 2.0).toFixed(4); shortSlFinal = +(entryPriceWithSlippage + atrVal * 1.2).toFixed(4); }
+          else if (isStock) { shortTpFinal = +(entryPriceWithSlippage - atrVal * 2.5).toFixed(4); shortSlFinal = +(entryPriceWithSlippage + atrVal * 1.5).toFixed(4); }
           else { shortTpFinal = result.shortTp; shortSlFinal = result.shortSl; }
 
           st.positions[sym] = {
             side: "SHORT", entryTime: new Date().toISOString(),
-            entryPrice: currentPrice, qty, cost,
+            entryPrice: entryPriceWithSlippage, qty, cost: cost + fees,
             tp: shortTpFinal, sl: shortSlFinal,
-            bestPrice: currentPrice, partialTaken: false, initialQty: qty,
+            bestPrice: entryPriceWithSlippage, partialTaken: false, initialQty: qty,
           };
-          setBalance(st.balance - cost);
+          setBalance(st.balance - cost - fees);
+          // NEW: Update daily stats
+          if (liveState.activeMode === "real") liveState.realDailyTrades++;
+          else liveState.virtualDailyTrades++;
 
           const tag = isCrypto ? "₿" : isFast ? "⚡" : asset?.type === "forex" ? "💱" : asset?.type === "commodity" ? "🥇" : asset?.type === "index" ? "📈" : "📊";
           const volTag = isVolatile ? "🔥" : "";
-          addNotification("info", `${tag}${volTag} SHORT ${sym}`, `Vente $${currentPrice.toFixed(2)} | TP: $${shortTpFinal} | SL: $${shortSlFinal} | Confiance: ${result.shortConfidence}% | ${result.shortReasons.join(", ")}`);
+          addNotification("info", `${tag}${volTag} SHORT ${sym}`, `Vente $${entryPriceWithSlippage.toFixed(2)} | TP: $${shortTpFinal} | SL: $${shortSlFinal} | Confiance: ${result.shortConfidence}% | Kelly: ${(kellyMultiplier * 100).toFixed(0)}% | ${result.shortReasons.join(", ")}`);
         }
       }
     } catch (err) {
@@ -1038,7 +1252,10 @@ async function liveTradeCheck() {
   const eq = getTotalEquity();
   const risk = getRiskProfile(eq);
   const wr = st.wins + st.losses > 0 ? ((st.wins / (st.wins + st.losses)) * 100).toFixed(0) : 0;
-  console.log(`[CYCLE] Mode:${liveState.activeMode} Risk:${risk.name} | Pos:${getPositionCount()}/${risk.maxPos} | Bal:€${st.balance.toFixed(2)} | Eq:€${eq.toFixed(2)} | PnL:€${st.totalPnL.toFixed(2)} | WR:${wr}%`);
+  const kelly = getKellyCriterion();
+  const dailyPnL = liveState.activeMode === "real" ? liveState.realDailyPnL : liveState.virtualDailyPnL;
+  const dailyTrades = liveState.activeMode === "real" ? liveState.realDailyTrades : liveState.virtualDailyTrades;
+  console.log(`[CYCLE] Mode:${liveState.activeMode} Risk:${risk.name} | Pos:${getPositionCount()}/${risk.maxPos} | Bal:€${st.balance.toFixed(2)} | Eq:€${eq.toFixed(2)} | PnL:€${st.totalPnL.toFixed(2)} | WR:${wr}% | Kelly:${(kelly * 100).toFixed(0)}% | Daily:€${dailyPnL.toFixed(2)} (${dailyTrades}t)${liveState.dailyTradingPaused ? " 🛑PAUSED" : ""}`);
 }
 
 // Start live trading engine — check every 30 seconds
@@ -1151,6 +1368,11 @@ app.get("/api/live", (req, res) => {
 
   const totalTrades = st.wins + st.losses;
   const winRate = totalTrades > 0 ? +((st.wins / totalTrades) * 100).toFixed(1) : 0;
+  
+  // NEW: Advanced metrics
+  const kelly = getKellyCriterion();
+  const dailyPnL = liveState.activeMode === "real" ? liveState.realDailyPnL : liveState.virtualDailyPnL;
+  const dailyTrades = liveState.activeMode === "real" ? liveState.realDailyTrades : liveState.virtualDailyTrades;
 
   res.json({
     mode: liveState.activeMode,
@@ -1169,6 +1391,12 @@ app.get("/api/live", (req, res) => {
     notifications: st.notifications.slice(0, 30),
     drawdown: +(st.peakBalance > 0 ? ((st.peakBalance - totalEquity) / st.peakBalance * 100) : 0).toFixed(2),
     equityMult: +getEquityMultiplier().toFixed(2),
+    // NEW: Advanced metrics
+    kelly: +(kelly * 100).toFixed(1),
+    dailyPnL: +dailyPnL.toFixed(2),
+    dailyTrades,
+    dailyTradingPaused: liveState.dailyTradingPaused,
+    maxDailyLoss: +(liveState.maxDailyLossPct * 100).toFixed(0),
   });
 });
 
