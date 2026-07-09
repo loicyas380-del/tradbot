@@ -482,11 +482,11 @@ function addPnL(pnl) {
 
 // ─── ADAPTIVE RISK SYSTEM ───
 function getRiskProfile(equity) {
-  if (equity <= 50) return { name: "micro", maxRiskPct: 0.15, maxPos: 3, maxPerGroup: 2, maxHoldMin: 480 };
-  if (equity <= 200) return { name: "small", maxRiskPct: 0.10, maxPos: 5, maxPerGroup: 3, maxHoldMin: 360 };
-  if (equity <= 500) return { name: "medium", maxRiskPct: 0.07, maxPos: 8, maxPerGroup: 3, maxHoldMin: 240 };
-  if (equity <= 2000) return { name: "large", maxRiskPct: 0.05, maxPos: 10, maxPerGroup: 4, maxHoldMin: 180 };
-  return { name: "big", maxRiskPct: 0.03, maxPos: 15, maxPerGroup: 5, maxHoldMin: 120 };
+  if (equity <= 50) return { name: "micro", maxRiskPct: 0.10, maxPos: 3, maxPerGroup: 2, maxHoldMin: 480, maxDrawdownPct: 0.30, cooldownMin: 60 };
+  if (equity <= 200) return { name: "small", maxRiskPct: 0.08, maxPos: 3, maxPerGroup: 2, maxHoldMin: 360, maxDrawdownPct: 0.25, cooldownMin: 45 };
+  if (equity <= 500) return { name: "medium", maxRiskPct: 0.06, maxPos: 5, maxPerGroup: 3, maxHoldMin: 240, maxDrawdownPct: 0.20, cooldownMin: 30 };
+  if (equity <= 2000) return { name: "large", maxRiskPct: 0.04, maxPos: 5, maxPerGroup: 3, maxHoldMin: 180, maxDrawdownPct: 0.15, cooldownMin: 20 };
+  return { name: "big", maxRiskPct: 0.03, maxPos: 8, maxPerGroup: 4, maxHoldMin: 120, maxDrawdownPct: 0.10, cooldownMin: 15 };
 }
 
 // ── CORRELATION GROUPS (max 2 per group) ──
@@ -923,7 +923,13 @@ async function processAsset(sym) {
 
       // ── ADAPTIVE LIMITS ──
       const drawdown = st.peakBalance > 0 ? (st.peakBalance - totalEquity) / st.peakBalance : 0;
-      const tradingPaused = drawdown > 0.15;
+      const maxDD = risk.maxDrawdownPct || 0.30;
+      const tradingPaused = drawdown > maxDD;
+
+      // ── CONSECUTIVE LOSS COOLDOWN ──
+      const recentTrades = st.tradeHistory.slice(0, 10);
+      const recentLosses = recentTrades.filter(t => t.pnl < 0).length;
+      const consecutiveLossCooldown = recentTrades.length >= 3 && recentTrades.slice(0, 3).every(t => t.pnl < 0);
 
       const atMax = getPositionCount() >= risk.maxPos;
       const cryptoLimit = isCrypto && getCryptoCount() >= Math.max(5, Math.floor(risk.maxPos * 0.4));
@@ -952,12 +958,13 @@ async function processAsset(sym) {
         if (cooldownActive) blocks.push("cooldown");
         if (corrLimit) blocks.push("corr");
         if (tradingPaused) blocks.push("paused");
+        if (consecutiveLossCooldown) blocks.push("lossCooldown");
         if (!result.volumeConfirm) blocks.push("vol");
         if (blocks.length > 0) console.log(`[BLOCKED] ${sym}: L=${result.longConfidence}% S=${result.shortConfidence}% → ${blocks.join(", ")}`);
         else console.log(`[SIGNAL] ${sym}: L=${result.longSignal ? result.longConfidence + "%" : "—"} S=${result.shortSignal ? result.shortConfidence + "%" : "—"} ${result.longSignal ? result.longReasons.join(",") : ""}${result.shortSignal ? result.shortReasons.join(",") : ""}`);
       }
 
-      if (!pos && !atMax && !cryptoLimit && !stockLimit && !fastLimit && !marketClosed && !forexClosed && !cooldownActive && !corrLimit && !tradingPaused && st.balance > 1) {
+      if (!pos && !atMax && !cryptoLimit && !stockLimit && !fastLimit && !marketClosed && !forexClosed && !cooldownActive && !corrLimit && !tradingPaused && !consecutiveLossCooldown && st.balance > 1) {
         // ── LONG ENTRY ──
         if (result.longSignal) {
           const confidence = result.longConfidence / 100;

@@ -5,7 +5,7 @@ import {
 
 const YF_H = { "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/125.0" };
 
-async function yfChart(symbol, range = "3mo", interval = "1h") {
+async function yfChart(symbol, range, interval = "1h") {
   const res = await fetch(`https://query1.finance.yahoo.com/v8/finance/chart/${symbol}?range=${range}&interval=${interval}`, { headers: YF_H, signal: AbortSignal.timeout(15000) });
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
   const json = await res.json();
@@ -42,27 +42,26 @@ function computeIndicators(rawData) {
   };
 }
 
-// Max positions open simultaneously
 function backtestAsset(sym, rawData, config, initialBalance) {
   if (!rawData || rawData.length < 40) return null;
   const ana = computeIndicators(rawData);
-  const { tpMultiplier, slMultiplier, trailMultiplier, riskPct, maxHoldBars, maxPositions } = config;
+  const { tpMultiplier, slMultiplier, trailMultiplier, riskPct, maxHoldBars, maxPositions, maxDrawdownPct, cooldownBars } = config;
   let balance = initialBalance;
   let peak = initialBalance;
   let positions = [];
   let maxDrawdown = 0, wins = 0, losses = 0;
-  const maxPos = maxPositions || 1;
+  let consecutiveLosses = 0;
+  let cooldown = 0;
+  const maxPos = maxPositions || 3;
 
   for (let i = 35; i < ana.len; i++) {
-    const { closes, rsi, macd, ema20, ema50, atr, stoch, volSma20, volumes } = ana;
+    const { closes, rsi, macd, ema20, ema50, atr } = ana;
     const price = closes[i];
     const rI = i - (ana.len - rsi.length);
     const mI = i - (ana.len - macd.length);
     const e20I = i - (ana.len - ema20.length);
     const e50I = i - (ana.len - ema50.length);
     const aI = i - (ana.len - atr.length);
-    const sI = i - (ana.len - stoch.length);
-    const vI = i - (ana.len - volSma20.length);
 
     const rsiVal = getVal(rsi, rI);
     const macdCurr = getVal(macd, mI);
@@ -70,18 +69,14 @@ function backtestAsset(sym, rawData, config, initialBalance) {
     const ema20Val = getVal(ema20, e20I);
     const ema50Val = getVal(ema50, e50I);
     const atrVal = getVal(atr, aI);
-    const stochVal = getVal(stoch, sI);
-    const volNow = getVal(volumes, i);
-    const volAvg = getVal(volSma20, vI);
 
     if (!rsiVal || !macdCurr || !ema20Val || !ema50Val || !atrVal) continue;
 
-    // EXIT existing positions
+    // EXIT
     for (let p = positions.length - 1; p >= 0; p--) {
       const pos = positions[p];
       pos.bars++;
       let shouldExit = false, exitPrice = price;
-
       if (pos.side === "LONG") {
         if (price > pos.bestPrice) pos.bestPrice = price;
         const trailSl = pos.bestPrice - atrVal * trailMultiplier;
@@ -99,11 +94,11 @@ function backtestAsset(sym, rawData, config, initialBalance) {
         else if (pos.bars >= maxHoldBars) { shouldExit = true; }
         else if (ema20Val > ema50Val) { shouldExit = true; }
       }
-
       if (shouldExit) {
         const pnl = pos.side === "LONG" ? pos.qty * (exitPrice - pos.entryPrice) : pos.qty * (pos.entryPrice - exitPrice);
         balance += pos.cost + pnl;
-        if (pnl > 0) wins++; else losses++;
+        if (pnl > 0) { wins++; consecutiveLosses = 0; }
+        else { losses++; consecutiveLosses++; cooldown = cooldownBars || 5; }
         positions.splice(p, 1);
         if (balance > peak) peak = balance;
         const dd = (peak - balance) / peak;
@@ -111,7 +106,17 @@ function backtestAsset(sym, rawData, config, initialBalance) {
       }
     }
 
-    // ENTRY — open new positions if room
+    // COOLDOWN
+    if (cooldown > 0) { cooldown--; continue; }
+
+    // MAX DRAWDOWN STOP — pause if drawdown too high
+    const currentDD = (peak - balance) / peak;
+    if (currentDD > (maxDrawdownPct || 0.20)) continue;
+
+    // CONSECUTIVE LOSS STOP — pause after 5 losses in a row
+    if (consecutiveLosses >= 5) { cooldown = 10; continue; }
+
+    // ENTRY
     if (positions.length < maxPos && balance > 3) {
       const longTrend = ema20Val > ema50Val;
       const shortTrend = ema20Val < ema50Val;
@@ -120,33 +125,22 @@ function backtestAsset(sym, rawData, config, initialBalance) {
       const macdRising = macdCurr.histogram > (macdPrev?.histogram || 0);
       const macdFalling = macdCurr.histogram < (macdPrev?.histogram || 0);
 
-      // LONG
       if (longTrend && rsiVal < 65 && rsiVal > 25 && macdCurr.histogram > 0 && (rsiRising || macdRising)) {
         const riskAmount = balance * riskPct;
         const slDist = atrVal * slMultiplier;
         let qty = +(riskAmount / slDist).toFixed(8);
         let cost = qty * price;
-        // Cap to available balance
-        if (cost > balance * 0.9) {
-          qty = +((balance * 0.9) / price).toFixed(8);
-          cost = qty * price;
-        }
+        if (cost > balance * 0.9) { qty = +((balance * 0.9) / price).toFixed(8); cost = qty * price; }
         if (cost > 0 && cost <= balance) {
           positions.push({ side: "LONG", entryPrice: price, qty, cost, tp: price + atrVal * tpMultiplier, sl: price - slDist, bestPrice: price, bars: 0 });
           balance -= cost;
         }
-      }
-      // SHORT
-      else if (shortTrend && rsiVal > 35 && rsiVal < 75 && macdCurr.histogram < 0 && (rsiFalling || macdFalling)) {
+      } else if (shortTrend && rsiVal > 35 && rsiVal < 75 && macdCurr.histogram < 0 && (rsiFalling || macdFalling)) {
         const riskAmount = balance * riskPct;
         const slDist = atrVal * slMultiplier;
         let qty = +(riskAmount / slDist).toFixed(8);
         let cost = qty * price;
-        // Cap to available balance
-        if (cost > balance * 0.9) {
-          qty = +((balance * 0.9) / price).toFixed(8);
-          cost = qty * price;
-        }
+        if (cost > balance * 0.9) { qty = +((balance * 0.9) / price).toFixed(8); cost = qty * price; }
         if (cost > 0 && cost <= balance) {
           positions.push({ side: "SHORT", entryPrice: price, qty, cost, tp: price - atrVal * tpMultiplier, sl: price + slDist, bestPrice: price, bars: 0 });
           balance -= cost;
@@ -155,7 +149,6 @@ function backtestAsset(sym, rawData, config, initialBalance) {
     }
   }
 
-  // Close remaining
   for (const pos of positions) {
     const lastPrice = ana.closes[ana.len - 1];
     const pnl = pos.side === "LONG" ? pos.qty * (lastPrice - pos.entryPrice) : pos.qty * (pos.entryPrice - lastPrice);
@@ -165,128 +158,125 @@ function backtestAsset(sym, rawData, config, initialBalance) {
 
   const totalTrades = wins + losses;
   const winRate = totalTrades > 0 ? ((wins / totalTrades) * 100).toFixed(1) : 0;
+  const pnlPct = ((balance - initialBalance) / initialBalance * 100).toFixed(1);
   const pnlEur = +(balance - initialBalance).toFixed(2);
-  const pnlPct = ((balance - initialBalance) / initialBalance * 100).toFixed(2);
 
-  return { sym, totalTrades, wins, losses, winRate: +winRate, pnlPct: +pnlPct, pnlEur, finalBalance: balance, maxDrawdown: +(maxDrawdown * 100).toFixed(2) };
+  return { sym, totalTrades, wins, losses, winRate: +winRate, pnlPct: +pnlPct, pnlEur, finalBalance: balance, maxDrawdown: +(maxDrawdown * 100).toFixed(1) };
 }
 
 // ══════════════════════════════════════════════════════════════
-// STRATEGIES AGRESSIVES — 40€ → 250€ (525% en 3 mois)
+// STRATÉGIES AVEC PROTECTION DRAWDOWN
 // ══════════════════════════════════════════════════════════════
 const STRATEGIES = [
-  // Final: focus on volatile assets only, aggressive sizing
-  { name: "FOCUS-1: Top5_Risk15%", riskPct: 0.15, tpMultiplier: 0.6, slMultiplier: 1.2, trailMultiplier: 0.35, maxHoldBars: 8, maxPositions: 3, topOnly: true },
-  { name: "FOCUS-2: Top5_Risk20%", riskPct: 0.20, tpMultiplier: 0.6, slMultiplier: 1.2, trailMultiplier: 0.35, maxHoldBars: 8, maxPositions: 3, topOnly: true },
-  { name: "FOCUS-3: Top5_Risk25%", riskPct: 0.25, tpMultiplier: 0.5, slMultiplier: 1.0, trailMultiplier: 0.3, maxHoldBars: 6, maxPositions: 4, topOnly: true },
-  { name: "FOCUS-4: All_Risk15%_TP0.6", riskPct: 0.15, tpMultiplier: 0.6, slMultiplier: 1.2, trailMultiplier: 0.35, maxHoldBars: 8, maxPositions: 3 },
-  { name: "FOCUS-5: All_Risk20%_TP0.5", riskPct: 0.20, tpMultiplier: 0.5, slMultiplier: 1.0, trailMultiplier: 0.3, maxHoldBars: 6, maxPositions: 4 },
-  { name: "FOCUS-6: All_Risk25%_TP0.4", riskPct: 0.25, tpMultiplier: 0.4, slMultiplier: 0.8, trailMultiplier: 0.25, maxHoldBars: 5, maxPositions: 5 },
-  { name: "FOCUS-7: Risk30%_TP0.5_5pos", riskPct: 0.30, tpMultiplier: 0.5, slMultiplier: 1.0, trailMultiplier: 0.3, maxHoldBars: 6, maxPositions: 5 },
-  { name: "FOCUS-8: Risk35%_TP0.4_5pos", riskPct: 0.35, tpMultiplier: 0.4, slMultiplier: 0.8, trailMultiplier: 0.25, maxHoldBars: 5, maxPositions: 5 },
-  { name: "FOCUS-9: Risk40%_TP0.5_3pos", riskPct: 0.40, tpMultiplier: 0.5, slMultiplier: 1.0, trailMultiplier: 0.3, maxHoldBars: 6, maxPositions: 3 },
-  { name: "FOCUS-10: Risk50%_TP0.3_3pos", riskPct: 0.50, tpMultiplier: 0.3, slMultiplier: 0.7, trailMultiplier: 0.2, maxHoldBars: 4, maxPositions: 3 },
+  { name: "Sélectif: DD20%", riskPct: 0.10, tpMultiplier: 0.6, slMultiplier: 1.2, trailMultiplier: 0.35, maxHoldBars: 8, maxPositions: 3, maxDrawdownPct: 0.20, cooldownBars: 8 },
+  { name: "Sélectif: DD30%", riskPct: 0.10, tpMultiplier: 0.6, slMultiplier: 1.2, trailMultiplier: 0.35, maxHoldBars: 8, maxPositions: 3, maxDrawdownPct: 0.30, cooldownBars: 5 },
+  { name: "Sélectif: DD25%", riskPct: 0.12, tpMultiplier: 0.6, slMultiplier: 1.2, trailMultiplier: 0.35, maxHoldBars: 8, maxPositions: 3, maxDrawdownPct: 0.25, cooldownBars: 6 },
+  { name: "Sélectif: DD15%", riskPct: 0.08, tpMultiplier: 0.6, slMultiplier: 1.2, trailMultiplier: 0.35, maxHoldBars: 8, maxPositions: 2, maxDrawdownPct: 0.15, cooldownBars: 10 },
+  { name: "Sélectif: Risk8_DD20", riskPct: 0.08, tpMultiplier: 0.6, slMultiplier: 1.2, trailMultiplier: 0.35, maxHoldBars: 8, maxPositions: 3, maxDrawdownPct: 0.20, cooldownBars: 8 },
+  { name: "Sélectif: Risk6_DD20", riskPct: 0.06, tpMultiplier: 0.6, slMultiplier: 1.2, trailMultiplier: 0.35, maxHoldBars: 8, maxPositions: 3, maxDrawdownPct: 0.20, cooldownBars: 8 },
+  { name: "Sélectif: Risk5_DD15", riskPct: 0.05, tpMultiplier: 0.6, slMultiplier: 1.2, trailMultiplier: 0.35, maxHoldBars: 8, maxPositions: 2, maxDrawdownPct: 0.15, cooldownBars: 10 },
+  { name: "Agro: Risk15_DD30", riskPct: 0.15, tpMultiplier: 0.6, slMultiplier: 1.2, trailMultiplier: 0.35, maxHoldBars: 8, maxPositions: 3, maxDrawdownPct: 0.30, cooldownBars: 5 },
+  { name: "Agro: Risk12_DD25", riskPct: 0.12, tpMultiplier: 0.6, slMultiplier: 1.2, trailMultiplier: 0.35, maxHoldBars: 8, maxPositions: 3, maxDrawdownPct: 0.25, cooldownBars: 6 },
+  { name: "Safe: Risk3_DD10", riskPct: 0.03, tpMultiplier: 0.6, slMultiplier: 1.2, trailMultiplier: 0.35, maxHoldBars: 8, maxPositions: 2, maxDrawdownPct: 0.10, cooldownBars: 15 },
 ];
 
-const ASSETS_TO_TEST = [
-  { sym: "BTC-USD", name: "Bitcoin", volatile: false },
-  { sym: "ETH-USD", name: "Ethereum", volatile: false },
-  { sym: "SOL-USD", name: "Solana", volatile: true },
-  { sym: "DOGE-USD", name: "Dogecoin", volatile: true },
-  { sym: "ADA-USD", name: "Cardano", volatile: true },
-  { sym: "AVAX-USD", name: "Avalanche", volatile: true },
-  { sym: "LINK-USD", name: "Chainlink", volatile: true },
-  { sym: "DOT-USD", name: "Polkadot", volatile: true },
-  { sym: "AAPL", name: "Apple", volatile: false },
-  { sym: "MSFT", name: "Microsoft", volatile: false },
-  { sym: "NVDA", name: "NVIDIA", volatile: true },
-  { sym: "TSLA", name: "Tesla", volatile: true },
-  { sym: "AMD", name: "AMD", volatile: true },
-  { sym: "META", name: "Meta", volatile: false },
-  { sym: "AMZN", name: "Amazon", volatile: false },
-  { sym: "GOOGL", name: "Google", volatile: false },
-  { sym: "EURUSD=X", name: "EUR/USD", volatile: false },
-  { sym: "GBPUSD=X", name: "GBP/USD", volatile: false },
-  { sym: "USDJPY=X", name: "USD/JPY", volatile: false },
-  { sym: "GC=F", name: "Gold", volatile: false },
+const ASSETS = [
+  { sym: "BTC-USD", name: "Bitcoin" },
+  { sym: "ETH-USD", name: "Ethereum" },
+  { sym: "SOL-USD", name: "Solana" },
+  { sym: "DOGE-USD", name: "Dogecoin" },
+  { sym: "ADA-USD", name: "Cardano" },
+  { sym: "AVAX-USD", name: "Avalanche" },
+  { sym: "LINK-USD", name: "Chainlink" },
+  { sym: "DOT-USD", name: "Polkadot" },
+  { sym: "AAPL", name: "Apple" },
+  { sym: "MSFT", name: "Microsoft" },
+  { sym: "NVDA", name: "NVIDIA" },
+  { sym: "TSLA", name: "Tesla" },
+  { sym: "AMD", name: "AMD" },
+  { sym: "META", name: "Meta" },
+  { sym: "AMZN", name: "Amazon" },
+  { sym: "GOOGL", name: "Google" },
+  { sym: "EURUSD=X", name: "EUR/USD" },
+  { sym: "GBPUSD=X", name: "GBP/USD" },
+  { sym: "USDJPY=X", name: "USD/JPY" },
+  { sym: "GC=F", name: "Gold" },
 ];
 
-async function runBacktest() {
-  console.log("═══════════════════════════════════════════════════════════════");
-  console.log("  BACKTEST AGRESSIF: 40€ → 250€ en 3 Mois (525%)");
-  console.log("═══════════════════════════════════════════════════════════════\n");
+async function runYear(yearName, range) {
+  console.log(`\n━━━━━━ ${yearName} (${range}) ━━━━━━`);
 
-  console.log("Fetching 3 months of 1h data...\n");
   const allData = {};
-  for (const asset of ASSETS_TO_TEST) {
+  for (const asset of ASSETS) {
     try {
-      allData[asset.sym] = await yfChart(asset.sym, "3mo", "1h");
-      process.stdout.write(`  ✓ ${asset.name} (${allData[asset.sym].length} candles)\n`);
-      await new Promise(r => setTimeout(r, 300));
-    } catch (err) {
-      process.stdout.write(`  ✗ ${asset.name}: ${err.message}\n`);
-    }
+      allData[asset.sym] = await yfChart(asset.sym, range, "1h");
+      await new Promise(r => setTimeout(r, 250));
+    } catch (err) {}
   }
-
-  console.log(`\nData loaded for ${Object.keys(allData).length} assets.\n`);
 
   const results = [];
   for (const strat of STRATEGIES) {
     let balance = 40;
     let totalWins = 0, totalLosses = 0;
-    const compoundHistory = [{ asset: "Start", balance: 40 }];
+    let maxDD = 0;
 
-    const assetsToTrade = strat.topOnly ? ASSETS_TO_TEST.filter(a => a.volatile) : ASSETS_TO_TEST;
-    for (const asset of assetsToTrade) {
+    for (const asset of ASSETS) {
       if (!allData[asset.sym]) continue;
       const result = backtestAsset(asset.sym, allData[asset.sym], strat, balance);
       if (result && result.totalTrades > 0) {
         totalWins += result.wins;
         totalLosses += result.losses;
+        if (result.maxDrawdown > maxDD) maxDD = result.maxDrawdown;
         balance = result.finalBalance;
-        compoundHistory.push({ asset: asset.name, balance, pnl: result.pnlEur, trades: result.totalTrades, wr: result.winRate });
       }
     }
 
     const totalTrades = totalWins + totalLosses;
     const winRate = totalTrades > 0 ? ((totalWins / totalTrades) * 100).toFixed(1) : 0;
-    const finalPnlPct = ((balance - 40) / 40 * 100).toFixed(1);
-    const target = balance >= 250;
+    const pnlPct = ((balance - 40) / 40 * 100).toFixed(1);
 
-    results.push({ name: strat.name, winRate: +winRate, totalTrades, finalBalance: balance, finalPnlPct: +finalPnlPct, compoundHistory, target });
-
-    const emoji = target ? "🏆" : +finalPnlPct > 100 ? "🔥" : +finalPnlPct > 0 ? "✅" : "❌";
-    console.log(`${emoji} ${strat.name}: WR=${winRate}% | ${totalTrades} trades | ${balance.toFixed(2)}€ (${finalPnlPct}%)${target ? " 🎯" : ""}`);
+    results.push({ name: strat.name, finalBalance: balance, pnlPct: +pnlPct, winRate: +winRate, totalTrades, maxDD: +maxDD });
   }
 
   results.sort((a, b) => b.finalBalance - a.finalBalance);
 
-  console.log("\n═══════════════════════════════════════════════════════════════");
-  console.log("  CLASSEMENT FINAL");
-  console.log("═══════════════════════════════════════════════════════════════");
-  results.forEach((r, i) => {
-    const marker = r.target ? " 🎯 TARGET!" : r.finalBalance > 40 ? " 💰" : " ❌";
-    console.log(`  ${i + 1}. ${r.name}: ${r.finalBalance.toFixed(2)}€ (${r.finalPnlPct}%) | WR=${r.winRate}% | ${r.totalTrades} trades${marker}`);
-  });
-
-  const best = results[0];
-  console.log("\n═══════════════════════════════════════════════════════════════");
-  if (best.target) {
-    console.log(`  🏆 TARGET ATTEINT! "${best.name}" → ${best.finalBalance.toFixed(2)}€`);
-  } else {
-    console.log(`  ⚠️ Meilleur: "${best.name}" → ${best.finalBalance.toFixed(2)}€ (${best.finalPnlPct}%)`);
-    console.log(`  Il manque ${(250 - best.finalBalance).toFixed(2)}€ pour atteindre 250€`);
+  console.log(`  ${"Stratégie".padEnd(22)} | ${"Final".padStart(10)} | ${"Profit".padStart(8)} | ${"WR".padStart(6)} | ${"Trades".padStart(6)} | ${"MaxDD".padStart(6)}`);
+  console.log(`  ${"─".repeat(22)}─┼─${"─".repeat(10)}─┼─${"─".repeat(8)}─┼─${"─".repeat(6)}─┼─${"─".repeat(6)}─┼─${"─".repeat(6)}`);
+  for (const r of results) {
+    const ddEmoji = r.maxDD <= 15 ? "🟢" : r.maxDD <= 25 ? "🟡" : r.maxDD <= 35 ? "🟠" : "🔴";
+    console.log(`  ${r.name.padEnd(22)} | ${r.finalBalance.toFixed(2).padStart(10)}€ | ${("+" + r.pnlPct + "%").padStart(8)} | ${(r.winRate + "%").padStart(6)} | ${String(r.totalTrades).padStart(6)} | ${ddEmoji}${r.maxDD}%`);
   }
-  console.log(`  📊 40€ → ${best.finalBalance.toFixed(2)}€ | WR: ${best.winRate}% | ${best.totalTrades} trades`);
-  console.log("\n  Historique:");
-  best.compoundHistory.forEach((h, i) => {
-    if (i === 0) console.log(`    ${i}. ${h.asset}: ${h.balance.toFixed(2)}€`);
-    else {
-      const arrow = h.pnl >= 0 ? "↑" : "↓";
-      console.log(`    ${i}. ${h.asset}: ${h.balance.toFixed(2)}€ (${arrow}${h.pnl.toFixed(2)}€, ${h.trades}t, ${h.wr}% WR)`);
-    }
-  });
+
+  return { year: yearName, results };
+}
+
+async function main() {
+  console.log("═══════════════════════════════════════════════════════════════");
+  console.log("  BACKTEST 3 ANNÉES — STRATÉGIES AVEC PROTECTION DRAWDOWN");
+  console.log("  TP 0.6×ATR | SL 1.2×ATR | Trail 0.35×ATR | 40€ → ???");
+  console.log("═══════════════════════════════════════════════════════════════");
+
+  const r1 = await runYear("6 Mois", "6mo");
+  const r2 = await runYear("1 An", "1y");
+  const r3 = await runYear("2 Ans", "2y");
+
+  // Find best overall (highest profit with DD < 25%)
+  const allResults = [...r1.results, ...r2.results, ...r3.results];
+  const safe = allResults.filter(r => r.maxDD <= 25);
+  const bestSafe = safe.sort((a, b) => b.pnlPct - a.pnlPct)[0];
+
+  console.log("\n═══════════════════════════════════════════════════════════════");
+  console.log("  🏆 MEILLEURE STRATÉGIE SÉCURISÉE (DD ≤ 25%)");
+  console.log("═══════════════════════════════════════════════════════════════");
+  if (bestSafe) {
+    console.log(`  Nom: ${bestSafe.name}`);
+    console.log(`  Profit moyen: +${bestSafe.pnlPct}%`);
+    console.log(`  Max Drawdown: ${bestSafe.maxDD}%`);
+    console.log(`  Win Rate: ${bestSafe.winRate}%`);
+  } else {
+    console.log("  Aucune stratégie avec DD ≤ 25% trouvée");
+  }
   console.log("═══════════════════════════════════════════════════════════════\n");
 }
 
-runBacktest().catch(console.error);
+main().catch(console.error);
